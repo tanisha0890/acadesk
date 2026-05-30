@@ -190,61 +190,70 @@ export default function Home() {
   const [loggedInEmail, setLoggedInEmail] = useState<string>("surajchoudhary5002@gmail.com");
   const [productivityScore, setProductivityScore] = useState<number>(94);
 
-  // Voice to Text states & hooks
+  // Voice to Text states & hooks (Dynamic Instantiation System)
   const [isListening, setIsListening] = useState(false);
   const [recognitionInstance, setRecognitionInstance] = useState<any>(null);
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      if (SpeechRecognition) {
-        const recognition = new SpeechRecognition();
-        recognition.continuous = false;
-        recognition.interimResults = false;
-        recognition.lang = "en-US";
-
-        recognition.onstart = () => {
-          setIsListening(true);
-        };
-
-        recognition.onresult = (event: any) => {
-          const transcript = event.results[0][0].transcript;
-          setAssistantInput(prev => prev + (prev ? " " : "") + transcript);
-        };
-
-        recognition.onerror = (event: any) => {
-          console.error("Speech recognition error:", event.error);
-          setIsListening(false);
-          if (event.error === "not-allowed") {
-            alert("🎤 Microphone access is blocked. Please click the lock or camera/microphone icon in your browser address bar and select 'Allow' to grant microphone access to Acadesk.");
-          } else if (event.error === "no-speech") {
-            console.warn("No speech was detected.");
-          } else if (event.error === "network") {
-            alert("⚠️ Network error occurred during speech recognition. Please check your internet connection.");
-          }
-        };
-
-        recognition.onend = () => {
-          setIsListening(false);
-        };
-
-        setRecognitionInstance(recognition);
-      }
-    }
-  }, []);
-
   const toggleListening = () => {
-    if (!recognitionInstance) {
+    if (typeof window === "undefined") return;
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
       alert("Web Speech API is not supported in this browser. Please use Google Chrome or Safari.");
       return;
     }
-    try {
-      if (isListening) {
-        recognitionInstance.stop();
-      } else {
-        setIsListening(true);
-        recognitionInstance.start();
+
+    if (isListening) {
+      if (recognitionInstance) {
+        try {
+          recognitionInstance.stop();
+        } catch (e) {
+          console.error("Speech recognition stop error:", e);
+        }
       }
+      setIsListening(false);
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = "en-US";
+
+      recognition.onstart = () => {
+        setIsListening(true);
+      };
+
+      recognition.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        if (transcript) {
+          setAssistantInput(prev => {
+            const cleanedPrev = prev.trim();
+            return cleanedPrev + (cleanedPrev ? " " : "") + transcript;
+          });
+        }
+      };
+
+      recognition.onerror = (event: any) => {
+        console.error("Speech recognition error:", event.error);
+        setIsListening(false);
+        if (event.error === "not-allowed") {
+          alert("🎤 Microphone access is blocked. Please click the lock or camera/microphone icon in your browser address bar and select 'Allow' to grant microphone access to Acadesk.");
+        } else if (event.error === "no-speech") {
+          alert("🎤 No speech was detected. Please make sure your microphone is active and try speaking clearly again.");
+        } else if (event.error === "network") {
+          alert("⚠️ Network error occurred during speech recognition. Please check your internet connection.");
+        }
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      setRecognitionInstance(recognition);
+      recognition.start();
+      setIsListening(true);
     } catch (err) {
       console.error("Speech recognition start error:", err);
       setIsListening(false);
