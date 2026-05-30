@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Pop - Amplify Your Content",
-  description: "Create stunning, high-fidelity landing and social links pages that make your content pop.",
+  title: "SyncSpace - AI Collaborative Academic Timetable & Workload Planner",
+  description: "Optimize your academic schedule, predict workloads, balance team tasks, find focus blocks, and eliminate deadline collisions with intelligent planning.",
 };
 
 export default function RootLayout({
@@ -13,7 +13,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="h-full antialiased">
-      <body className="min-h-full flex flex-col bg-bg-primary text-slate-100">
+      <body className="min-h-full flex flex-col antialiased">
         {children}
       </body>
     </html>

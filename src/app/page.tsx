@@ -1,1226 +1,1999 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import Image from "next/image";
+import React, { useState, useEffect, useRef } from "react";
+import { 
+  LayoutDashboard, 
+  Calendar, 
+  Users, 
+  Bot, 
+  HeartPulse, 
+  LogOut, 
+  Sun, 
+  Moon, 
+  AlertTriangle, 
+  Menu, 
+  X,
+  Bell,
+  Sparkles,
+  BookOpen,
+  Zap,
+  Clock,
+  ShieldAlert,
+  CheckCircle2,
+  ChevronRight,
+  Plus,
+  Circle,
+  Trash2,
+  Edit2,
+  Send,
+  Compass,
+  Award,
+  ChevronUp,
+  TrendingUp,
+  BrainCircuit,
+  Mail,
+  Key,
+  Eye,
+  EyeOff,
+  User
+} from "lucide-react";
 
-interface Deadline {
+// Types
+export interface Deadline {
   id: string;
+  courseCode: string;
   title: string;
   date: string;
   time: string;
-  groupName: string;
-  type: "Exam" | "Submission";
-  severity: "Low" | "Medium" | "High"; // Low: 🟢, Medium: 🟡, High: 🔴
+  priority: "Critical" | "Important" | "Normal";
+  category: "Exam" | "Submission" | "Project" | "Meeting";
+  completed: boolean;
 }
 
-interface GroupActivity {
+export interface GroupActivity {
   id: string;
   name: string;
+  courseCode: string;
   deadlinesThisWeek: number;
   nearestDeadline: string;
-  courseCode: string;
+}
+
+export interface TeamMember {
+  name: string;
+  tasksCount: number;
+  availability: "Available" | "Busy" | "Highly Busy";
+  capacity: number;
+}
+
+export interface ChatMessage {
+  sender: "user" | "ai";
+  text: string;
+  timestamp: string;
+}
+
+export interface WorkBreakdownStep {
+  date: string;
+  phase: string;
+}
+
+// Initial Data
+const INITIAL_GROUPS: GroupActivity[] = [
+  { id: "group-1", name: "CS301: Advanced Algorithms", courseCode: "CS301", deadlinesThisWeek: 3, nearestDeadline: "Algorithms Midterm Exam - Tomorrow" },
+  { id: "group-2", name: "CS302: Web Development", courseCode: "CS302", deadlinesThisWeek: 4, nearestDeadline: "Web Dev Lab Assignment - Jun 3" },
+  { id: "group-3", name: "MA201: Linear Algebra", courseCode: "MA201", deadlinesThisWeek: 2, nearestDeadline: "Homework 4 - Jun 5" },
+];
+
+const INITIAL_DEADLINES: Deadline[] = [
+  { id: "dl-1", courseCode: "CS301", title: "Algorithms Midterm Exam", date: "2026-05-31", time: "10:00 AM", category: "Exam", priority: "Critical", completed: false },
+  { id: "dl-1-b", courseCode: "CS302", title: "Web Dev Quiz 2", date: "2026-05-31", time: "02:00 PM", category: "Exam", priority: "Important", completed: false },
+  { id: "dl-1-c", courseCode: "CS301", title: "Algorithms Assignment 3", date: "2026-05-31", time: "11:59 PM", category: "Submission", priority: "Important", completed: false },
+  { id: "dl-meeting", courseCode: "CS302", title: "Group Coordination Meeting", date: "2026-06-01", time: "03:00 PM", category: "Meeting", priority: "Normal", completed: false },
+  { id: "dl-2", courseCode: "CS302", title: "Database Design Submission", date: "2026-06-02", time: "11:59 PM", category: "Submission", priority: "Important", completed: false },
+  { id: "dl-2-b", courseCode: "CS301", title: "Algorithms Lab 4", date: "2026-06-02", time: "05:00 PM", category: "Submission", priority: "Normal", completed: false },
+  { id: "dl-2-c", courseCode: "MA201", title: "Linear Algebra Quiz 3", date: "2026-06-02", time: "11:00 AM", category: "Exam", priority: "Critical", completed: false },
+  { id: "dl-2-d", courseCode: "CS302", title: "Web Dev Reading Response", date: "2026-06-02", time: "09:00 PM", category: "Submission", priority: "Normal", completed: false },
+  { id: "dl-3", courseCode: "CS302", title: "Web Dev Lab Assignment", date: "2026-06-03", time: "04:00 PM", category: "Submission", priority: "Normal", completed: false },
+  { id: "dl-4", courseCode: "MA201", title: "Linear Algebra Homework 4", date: "2026-06-05", time: "11:59 PM", category: "Submission", priority: "Critical", completed: false },
+  { id: "dl-5", courseCode: "CS301", title: "Software Engineering Presentation", date: "2026-06-07", time: "02:00 PM", category: "Project", priority: "Normal", completed: false },
+];
+
+const INITIAL_TEAM_MEMBERS: TeamMember[] = [
+  { name: "Swarnava", tasksCount: 8, availability: "Highly Busy", capacity: 10 },
+  { name: "Rahul", tasksCount: 3, availability: "Available", capacity: 8 },
+  { name: "Priya", tasksCount: 5, availability: "Busy", capacity: 8 },
+  { name: "Ankit", tasksCount: 2, availability: "Available", capacity: 8 },
+];
+
+const INITIAL_CHAT: ChatMessage[] = [
+  { sender: "ai", text: "Hello! I am your SyncSpace AI Academic Planner Assistant. Ask me anything about your timetable, upcoming deadline collisions, or workload balancing.", timestamp: new Date().toLocaleTimeString() }
+];
+
+const anchorDate = new Date("2026-05-30");
+
+function AnimatedCounter({ value, duration = 800 }: { value: number; duration?: number }) {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    let start = 0;
+    const end = value;
+    if (end === 0) {
+      setCount(0);
+      return;
+    }
+    const timer = setInterval(() => {
+      start += 1;
+      setCount(start);
+      if (start >= end) {
+        setCount(end);
+        clearInterval(timer);
+      }
+    }, Math.max(10, Math.floor(duration / end)));
+    return () => clearInterval(timer);
+  }, [value, duration]);
+
+  return <>{count}</>;
 }
 
 export default function Home() {
-  const [currentPage, setCurrentPage] = useState<"splash" | "login" | "signup" | "dashboard">("splash");
-  const [activeSubPage, setActiveSubPage] = useState<"main" | "heatmap" | "group">("main");
-  const [selectedGroup, setSelectedGroup] = useState<GroupActivity | null>(null);
-  const [darkMode, setDarkMode] = useState(false);
-  const [mouseOffset, setMouseOffset] = useState({ x: 0, y: 0 });
+  // Page routing state
+  const [currentPage, setCurrentPage] = useState<"landing" | "login" | "signup" | "dashboard">("landing");
+  const [activeTab, setActiveTab] = useState<"overview" | "planner" | "team" | "assistant" | "health">("overview");
+
+  // Authentication Fields
+  const [emailInput, setEmailInput] = useState("");
+  const [passwordInput, setPasswordInput] = useState("");
+  const [nameInput, setNameInput] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   
-  // Logged In User State
-  const [loggedInEmail, setLoggedInEmail] = useState("surajchoudhary5002@gmail.com");
-  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [tempAvatarUrl, setTempAvatarUrl] = useState<string | null>(null);
-  const [showChangeProfileModal, setShowChangeProfileModal] = useState(false);
+  // App States
+  const [deadlines, setDeadlines] = useState<Deadline[]>(INITIAL_DEADLINES);
+  const [groups, setGroups] = useState<GroupActivity[]>(INITIAL_GROUPS);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>(INITIAL_TEAM_MEMBERS);
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>(INITIAL_CHAT);
+  const [darkMode, setDarkMode] = useState<boolean>(true);
+  const [loggedInEmail, setLoggedInEmail] = useState<string>("surajchoudhary5002@gmail.com");
+  const [productivityScore, setProductivityScore] = useState<number>(84);
 
-  // Form Password Eye Toggle States
-  const [showLoginPassword, setShowLoginPassword] = useState(false);
-  const [showSignupPassword, setShowSignupPassword] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mouseOffset, setMouseOffset] = useState({ x: 0, y: 0 });
 
-  // Form Fields State
-  const [loginEmail, setLoginEmail] = useState("");
-  const [loginPassword, setLoginPassword] = useState("");
-  const [signupName, setSignupName] = useState("");
-  const [signupEmail, setSignupEmail] = useState("");
-  const [signupPassword, setSignupPassword] = useState("");
+  // 4. APPLE-STYLE HIGH FIDELITY SEQUENCER STATES
+  const [sequenceProgress, setSequenceProgress] = useState(25);
+  const sequenceCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  // Quick Add Deadline State
-  const [newTitle, setNewTitle] = useState("");
-  const [newDate, setNewDate] = useState("");
-  const [newTime, setNewTime] = useState("23:59");
-  const [newGroup, setNewGroup] = useState("CS301: Advanced Algorithms");
-  const [newType, setNewType] = useState<"Exam" | "Submission">("Submission");
+  const handleSequenceMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const pct = Math.min(100, Math.max(0, Math.floor((x / rect.width) * 100)));
+    setSequenceProgress(pct);
+  };
 
-  // Edit / View Modal State
-  const [selectedDeadline, setSelectedDeadline] = useState<Deadline | null>(null);
+  // 3. JUDGE SURPRISE: AI ZEN DECOMPRESSOR ANIMATION CANVAS
+  const [zenMode, setZenMode] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  // Seed Data: User Groups
-  const [groups, setGroups] = useState<GroupActivity[]>([
-    { id: "group-1", name: "CS301: Advanced Algorithms", courseCode: "CS301", deadlinesThisWeek: 2, nearestDeadline: "Algorithms Midterm Exam - Tomorrow" },
-    { id: "group-2", name: "CS302: Web Development", courseCode: "CS302", deadlinesThisWeek: 1, nearestDeadline: "Web Dev Lab Assignment - Jun 3" },
-    { id: "group-3", name: "MA201: Linear Algebra", courseCode: "MA201", deadlinesThisWeek: 1, nearestDeadline: "Homework 4 - Jun 5" },
-  ]);
+  const triggerStressRelief = () => {
+    setZenMode(true);
+    setTimeout(() => setZenMode(false), 6000);
 
-  // Seed Data: Upcoming Deadlines (soonest first)
-  const [deadlines, setDeadlines] = useState<Deadline[]>([
-    { id: "dl-1", title: "Algorithms Midterm Exam", date: "2026-05-31", time: "10:00 AM", groupName: "CS301: Advanced Algorithms", type: "Exam", severity: "High" },
-    { id: "dl-1-b", title: "Web Dev Quiz 2", date: "2026-05-31", time: "02:00 PM", groupName: "CS302: Web Development", type: "Exam", severity: "Medium" },
-    { id: "dl-1-c", title: "Algorithms Assignment 3", date: "2026-05-31", time: "11:59 PM", groupName: "CS301: Advanced Algorithms", type: "Submission", severity: "Medium" },
-    { id: "dl-2", title: "Database Design Submission", date: "2026-06-02", time: "11:59 PM", groupName: "CS302: Web Development", type: "Submission", severity: "Medium" },
-    { id: "dl-2-b", title: "Algorithms Lab 4", date: "2026-06-02", time: "05:00 PM", groupName: "CS301: Advanced Algorithms", type: "Submission", severity: "Low" },
-    { id: "dl-2-c", title: "Linear Algebra Quiz 3", date: "2026-06-02", time: "11:00 AM", groupName: "MA201: Linear Algebra", type: "Exam", severity: "High" },
-    { id: "dl-2-d", title: "Web Dev Reading Response", date: "2026-06-02", time: "09:00 PM", groupName: "CS302: Web Development", type: "Submission", severity: "Low" },
-    { id: "dl-3", title: "Web Dev Lab Assignment", date: "2026-06-03", time: "04:00 PM", groupName: "CS302: Web Development", type: "Submission", severity: "Low" },
-    { id: "dl-4", title: "Linear Algebra Homework 4", date: "2026-06-05", time: "11:59 PM", groupName: "MA201: Linear Algebra", type: "Submission", severity: "High" },
-    { id: "dl-5", title: "Software Engineering Presentation", date: "2026-06-07", time: "02:00 PM", groupName: "CS301: Advanced Algorithms", type: "Exam", severity: "Low" },
-  ]);
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
 
-  // Coordinate-normalized mouse movement hook
-  useEffect(() => {
-    let stopTimeout: NodeJS.Timeout;
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
 
-    const handleMouseMove = (e: MouseEvent) => {
-      if (stopTimeout) {
-        clearTimeout(stopTimeout);
+    const emojis = ["🧘", "☕", "📚", "🎓", "🟢", "🚀", "🎯", "✨"];
+    const particles: Array<{
+      x: number;
+      y: number;
+      vy: number;
+      vx: number;
+      text: string;
+      size: number;
+      alpha: number;
+      rot: number;
+      rotSpeed: number;
+    }> = [];
+
+    for (let i = 0; i < 45; i++) {
+      particles.push({
+        x: Math.random() * canvas.width,
+        y: canvas.height + Math.random() * 100,
+        vy: -2 - Math.random() * 5,
+        vx: -1.5 + Math.random() * 3,
+        text: emojis[Math.floor(Math.random() * emojis.length)],
+        size: 20 + Math.random() * 24,
+        alpha: 1,
+        rot: Math.random() * Math.PI * 2,
+        rotSpeed: -0.05 + Math.random() * 0.1
+      });
+    }
+
+    let animId: number;
+    const draw = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      let alive = false;
+
+      particles.forEach(p => {
+        if (p.alpha <= 0) return;
+        alive = true;
+
+        p.y += p.vy;
+        p.x += p.vx;
+        p.rot += p.rotSpeed;
+        p.alpha -= 0.008;
+
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+        ctx.font = `${p.size}px Arial`;
+        ctx.globalAlpha = Math.max(0, p.alpha);
+        ctx.fillText(p.text, -p.size / 2, p.size / 2);
+        ctx.restore();
+      });
+
+      if (alive) {
+        animId = requestAnimationFrame(draw);
       }
+    };
 
+    draw();
+  };
+
+  // Planner Tab Specific States
+  const [heatmapView, setHeatmapView] = useState<"weekly" | "monthly" | "semester">("weekly");
+  const [selectedHeatDate, setSelectedHeatDate] = useState<string | null>(null);
+  const [activeSmartPlanId, setActiveSmartPlanId] = useState<string | null>(null);
+  const [courseFilter, setCourseFilter] = useState<string>("All");
+  const [typeFilter, setTypeFilter] = useState<string>("All");
+
+  // Edit deadline modal state
+  const [editingDeadline, setEditingDeadline] = useState<Deadline | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editPriority, setEditPriority] = useState<Deadline["priority"]>("Normal");
+  const [editCategory, setEditCategory] = useState<Deadline["category"]>("Submission");
+
+  // Quick Add Event state (Dashboard Tab)
+  const [quickTitle, setQuickTitle] = useState("");
+  const [quickDate, setQuickDate] = useState("");
+  const [quickCategory, setQuickCategory] = useState<Deadline["category"]>("Submission");
+  const [quickPriority, setQuickPriority] = useState<Deadline["priority"]>("Normal");
+  const [quickCourse, setQuickCourse] = useState("CS301");
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+
+  // Peer Invite state (Team Tab)
+  const [invitedEmail, setInvitedEmail] = useState("");
+
+  // AI Assistant Tab state
+  const [assistantInput, setAssistantInput] = useState("");
+  const chatEndRef = useRef<HTMLDivElement | null>(null);
+
+  // Monitor mouse movements for glowing backgrounds
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
       const centerX = window.innerWidth / 2;
       const centerY = window.innerHeight / 2;
-
-      const ratioX = (e.clientX - centerX) / centerX;
-      const ratioY = (e.clientY - centerY) / centerY;
-
-      const targetX = ratioX * 40;
-      const targetY = ratioY * 40;
-
-      setMouseOffset({ x: targetX, y: targetY });
-
-      stopTimeout = setTimeout(() => {
-        setMouseOffset({ x: 0, y: 0 });
-      }, 500);
+      setMouseOffset({
+        x: ((e.clientX - centerX) / centerX) * 20,
+        y: ((e.clientY - centerY) / centerY) * 20
+      });
     };
-
     window.addEventListener("mousemove", handleMouseMove);
-
-    return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      if (stopTimeout) {
-        clearTimeout(stopTimeout);
-      }
-    };
+    return () => window.removeEventListener("mousemove", handleMouseMove);
   }, []);
 
-  // Close profile dropdown on outside click
+  // 4. APPLE-STYLE HIGH FIDELITY SEQUENCER DRAWING & MORPHING ANIMATION LOOP
   useEffect(() => {
-    if (!showProfileDropdown) return;
-    const closeDropdown = () => setShowProfileDropdown(false);
-    window.addEventListener("click", closeDropdown);
-    return () => window.removeEventListener("click", closeDropdown);
-  }, [showProfileDropdown]);
+    if (currentPage !== "landing") return;
+    const canvas = sequenceCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
 
-  // Persistent avatar load on mount
+    let animId: number;
+    let localTimeOffset = 0;
+
+    const render = () => {
+      if (currentPage !== "landing") return;
+      
+      const rect = canvas.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) {
+        animId = requestAnimationFrame(render);
+        return;
+      }
+      
+      canvas.width = rect.width * 2;
+      canvas.height = rect.height * 2;
+      ctx.scale(2, 2);
+
+      const width = rect.width;
+      const height = rect.height;
+      ctx.clearRect(0, 0, width, height);
+
+      const progress = sequenceProgress / 100; // 0 to 1
+      const center = { x: width / 2, y: height / 2 };
+
+      // Slow dynamic spin when progress is low, merges with mouse position rotation
+      localTimeOffset += 0.01;
+      const theta = progress * Math.PI * 2.2 + localTimeOffset * 0.15 + 0.3;
+      const phi = progress * Math.PI * 1.6 + localTimeOffset * 0.1 + 0.5;
+
+      // Define 3D wireframe points for hyper-cube tesseract
+      const points3D: Array<{ x: number; y: number; z: number; w: number }> = [];
+      for (let x = -1; x <= 1; x += 2) {
+        for (let y = -1; y <= 1; y += 2) {
+          for (let z = -1; z <= 1; z += 2) {
+            for (let w = -1; w <= 1; w += 2) {
+              points3D.push({ x, y, z, w });
+            }
+          }
+        }
+      }
+
+      const projectedPoints: Array<{ x: number; y: number; originalIdx: number }> = [];
+
+      // Destination 4x4 Grid coords (representing flat Assembled Timetable month calendar)
+      const colSpacing = width / 5;
+      const rowSpacing = height / 5;
+      const gridPoints: Array<{ x: number; y: number }> = [];
+      for (let r = 0; r < 4; r++) {
+        for (let c = 0; c < 4; c++) {
+          gridPoints.push({
+            x: center.x - (1.5 * colSpacing) + c * colSpacing,
+            y: center.y - (1.5 * rowSpacing) + r * rowSpacing
+          });
+        }
+      }
+
+      // Map 3D coordinates into projected 2D coordinates
+      points3D.forEach((p, idx) => {
+        // 1. Double plane 3D rotation
+        let x1 = p.x * Math.cos(theta) - p.y * Math.sin(theta);
+        let y1 = p.x * Math.sin(theta) + p.y * Math.cos(theta);
+        let z1 = p.z;
+
+        let y2 = y1 * Math.cos(phi) - z1 * Math.sin(phi);
+        let z2 = y1 * Math.sin(phi) + z1 * Math.cos(phi);
+        let x2 = x1;
+
+        // 4D Dimensional offset multiplier (w-coefficient)
+        const wAngle = progress * Math.PI;
+        const wMultiplier = 1.05 + p.w * 0.4 * Math.sin(wAngle);
+        x2 *= wMultiplier;
+        y2 *= wMultiplier;
+        z2 *= wMultiplier;
+
+        // 2. Perspective math
+        const distanceZ = 2.5 + z2 * 0.35;
+        const scale = (width * 0.28) / distanceZ;
+        const projX = center.x + x2 * scale;
+        const projY = center.y + y2 * scale;
+
+        // 3. Morph projection to target calendar coordinates
+        const morphFactor = Math.min(1.0, Math.max(0.0, (progress - 0.25) / 0.75));
+        
+        const finalX = projX * (1 - morphFactor) + gridPoints[idx].x * morphFactor;
+        const finalY = projY * (1 - morphFactor) + gridPoints[idx].y * morphFactor;
+
+        projectedPoints.push({ x: finalX, y: finalY, originalIdx: idx });
+      });
+
+      // 4. Draw connecting matrix edges
+      ctx.lineWidth = 1.1;
+      for (let i = 0; i < 16; i++) {
+        for (let j = i + 1; j < 16; j++) {
+          let diffBits = 0;
+          const xor = i ^ j;
+          for (let b = 0; b < 4; b++) {
+            if ((xor & (1 << b)) !== 0) diffBits++;
+          }
+
+          if (diffBits === 1) {
+            const ptA = projectedPoints[i];
+            const ptB = projectedPoints[j];
+            
+            const morph = Math.min(1, Math.max(0, (progress - 0.25) / 0.75));
+            const opacity = 0.12 + (1 - morph) * 0.26;
+            
+            ctx.strokeStyle = darkMode 
+              ? `rgba(129, 140, 248, ${opacity})`
+              : `rgba(63, 81, 181, ${opacity})`;
+            
+            ctx.beginPath();
+            ctx.moveTo(ptA.x, ptA.y);
+            ctx.lineTo(ptB.x, ptB.y);
+            ctx.stroke();
+          }
+        }
+      }
+
+      // 5. Draw timetable calendar borders
+      if (progress > 0.25) {
+        const morph = (progress - 0.25) / 0.75;
+        ctx.lineWidth = 0.85;
+        ctx.strokeStyle = darkMode 
+          ? `rgba(255, 255, 255, ${morph * 0.08})`
+          : `rgba(0, 0, 0, ${morph * 0.07})`;
+        
+        for (let i = 0; i <= 4; i++) {
+          const vX = center.x - (2 * colSpacing) + i * colSpacing + (colSpacing / 2);
+          const startY = center.y - (2 * rowSpacing) + (rowSpacing / 2);
+          const endY = startY + 4 * rowSpacing;
+          ctx.beginPath();
+          ctx.moveTo(vX, startY);
+          ctx.lineTo(vX, endY);
+          ctx.stroke();
+
+          const hY = center.y - (2 * rowSpacing) + i * rowSpacing + (rowSpacing / 2);
+          const startX = center.x - (2 * colSpacing) + (colSpacing / 2);
+          const endX = startX + 4 * colSpacing;
+          ctx.beginPath();
+          ctx.moveTo(startX, hY);
+          ctx.lineTo(endX, hY);
+          ctx.stroke();
+        }
+      }
+
+      // 6. Draw active scheduled task nodes
+      projectedPoints.forEach((pt, idx) => {
+        const morph = Math.min(1, Math.max(0, (progress - 0.25) / 0.75));
+        const size = (idx % 3 === 0 ? 5.5 : idx % 2 === 0 ? 4.5 : 3.5) * (1 - morph * 0.2);
+        
+        const colors = [
+          "rgba(244, 63, 94, 0.85)",
+          "rgba(99, 102, 241, 0.85)",
+          "rgba(16, 185, 129, 0.85)",
+          "rgba(245, 158, 11, 0.85)"
+        ];
+        const color = colors[idx % colors.length];
+
+        ctx.save();
+        ctx.shadowBlur = 8;
+        ctx.shadowColor = color;
+        ctx.fillStyle = color;
+
+        const pulse = 1 + 0.12 * Math.sin(Date.now() / 200 + idx);
+        
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, size * (progress > 0.8 ? pulse : 1), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        if (progress > 0.8) {
+          const textOpacity = (progress - 0.8) / 0.2;
+          ctx.fillStyle = darkMode ? `rgba(148, 163, 184, ${textOpacity})` : `rgba(71, 85, 105, ${textOpacity})`;
+          ctx.font = "bold 7px sans-serif";
+          ctx.textAlign = "center";
+          
+          const labels = ["CS301", "MA201", "Exam", "Lab", "Review", "Milestone", "Meeting", "Priya", "Suraj", "Rahul", "Code", "Submit", "Demo", "Verify", "Calm", "Relax"];
+          ctx.fillText(labels[idx], pt.x, pt.y + 11);
+        }
+      });
+
+      animId = requestAnimationFrame(render);
+    };
+
+    render();
+    return () => cancelAnimationFrame(animId);
+  }, [currentPage, sequenceProgress, darkMode]);
+
+  // Load from localStorage on mount
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const savedAvatar = localStorage.getItem("syncspace_avatar");
-      if (savedAvatar) {
-        setAvatarUrl(savedAvatar);
+      const savedDeadlines = localStorage.getItem("syncspace_deadlines");
+      const savedTheme = localStorage.getItem("syncspace_theme");
+      const savedEmail = localStorage.getItem("syncspace_email");
+      const savedScore = localStorage.getItem("syncspace_productivity_score");
+      const savedChat = localStorage.getItem("syncspace_chat");
+
+      if (savedDeadlines) setDeadlines(JSON.parse(savedDeadlines));
+      if (savedTheme) setDarkMode(savedTheme === "dark");
+      if (savedEmail) {
+        setLoggedInEmail(savedEmail);
+        setCurrentPage("dashboard"); // Auto login if email is saved
       }
+      if (savedScore) setProductivityScore(Number(savedScore));
+      if (savedChat) setChatHistory(JSON.parse(savedChat));
     }
   }, []);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const validTypes = ["image/jpeg", "image/png"];
-    if (!validTypes.includes(file.type)) {
-      alert("Invalid file format. Please upload a JPG or PNG image! 🖼️");
-      return;
+  // Sync state helpers
+  const saveState = (key: string, value: any) => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem(key, JSON.stringify(value));
     }
-
-    const maxSize = 2 * 1024 * 1024; // 2MB
-    if (file.size > maxSize) {
-      alert("Image is too large! Please choose an image smaller than 2MB. ⚖️");
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setTempAvatarUrl(reader.result as string);
-    };
-    reader.readAsDataURL(file);
   };
 
-  const handleGetStarted = () => {
-    setCurrentPage("login");
+  const handleSetLoggedInEmail = (email: string) => {
+    setLoggedInEmail(email);
+    localStorage.setItem("syncspace_email", email);
   };
 
-  const navigateToSplash = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setCurrentPage("splash");
-  };
-
-  const navigateToSignup = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setCurrentPage("signup");
-  };
-
-  const navigateToLogin = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setCurrentPage("login");
-  };
-
-  const handleForgotPassword = (e: React.MouseEvent) => {
-    e.preventDefault();
-    alert("Password reset link sent! ✉️");
-  };
-
-  const toggleDarkMode = () => {
-    setDarkMode(!darkMode);
-  };
-
-  // Login handler
-  const handleLoginSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoggedInEmail(loginEmail || "student@university.edu");
-    setCurrentPage("dashboard");
-    setActiveSubPage("main");
-  };
-
-  // Sign up handler
-  const handleSignupSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoggedInEmail(signupEmail || "student@university.edu");
-    setCurrentPage("dashboard");
-    setActiveSubPage("main");
-  };
-
-  // Log out handler
-  const handleLogOut = () => {
-    setCurrentPage("login");
-    setActiveSubPage("main");
-  };
-
-  // Quick Add Deadline Handler
-  const handleAddDeadline = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTitle || !newDate) {
-      alert("Please enter a title and select a date! 📅");
-      return;
-    }
-
-    // Determine severity color based on title or random
-    let severity: "Low" | "Medium" | "High" = "Low";
-    if (newTitle.toLowerCase().includes("exam") || newTitle.toLowerCase().includes("midterm")) {
-      severity = "High";
-    } else if (newTitle.toLowerCase().includes("homework") || newTitle.toLowerCase().includes("assignment")) {
-      severity = "Medium";
-    }
-
-    const newDl: Deadline = {
+  // Add Deadline
+  const addDeadline = (newDl: Omit<Deadline, "id" | "completed">) => {
+    const enriched: Deadline = {
+      ...newDl,
       id: `dl-${Date.now()}`,
-      title: newTitle,
-      date: newDate,
-      time: newTime,
-      groupName: newGroup,
-      type: newType,
-      severity
+      completed: false,
     };
+    const updated = [...deadlines, enriched].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    setDeadlines(updated);
+    saveState("syncspace_deadlines", updated);
 
-    // Update upcoming list (sorting chronologically)
-    const updatedDl = [...deadlines, newDl].sort((a, b) => {
-      return new Date(`${a.date}T${a.time.includes("AM") || a.time.includes("PM") ? "12:00" : a.time}`).getTime() -
-             new Date(`${b.date}T${b.time.includes("AM") || b.time.includes("PM") ? "12:00" : b.time}`).getTime();
-    });
-
-    setDeadlines(updatedDl);
-
-    // Update corresponding group deadlines count
-    setGroups(groups.map(g => {
-      if (g.name === newGroup) {
+    // Update group deadlines count
+    const updatedGroups = groups.map(g => {
+      if (g.courseCode === newDl.courseCode) {
         return {
           ...g,
           deadlinesThisWeek: g.deadlinesThisWeek + 1,
-          nearestDeadline: `${newTitle} - ${newDate.substring(5)}`
+          nearestDeadline: `${newDl.title} - ${newDl.date.substring(5)}`,
         };
       }
       return g;
-    }));
+    });
+    setGroups(updatedGroups);
 
-    // Reset inputs
-    setNewTitle("");
-    setNewDate("");
-    alert("Deadline added successfully! 🚀");
+    setProductivityScore(prev => Math.min(100, Math.max(30, prev - 1)));
   };
 
-  // Mock Delete Deadline Handler
-  const handleDeleteDeadline = (id: string) => {
-    setDeadlines(deadlines.filter(dl => dl.id !== id));
-    setSelectedDeadline(null);
-    alert("Deadline deleted! 🗑️");
+  // Delete Deadline
+  const deleteDeadline = (id: string) => {
+    const updated = deadlines.filter(dl => dl.id !== id);
+    setDeadlines(updated);
+    saveState("syncspace_deadlines", updated);
   };
 
-  // Mock update/close modal
-  const handleSaveDeadline = () => {
-    setSelectedDeadline(null);
-    alert("Deadline details saved! 💾");
+  // Toggle Complete
+  const toggleCompleteDeadline = (id: string) => {
+    const updated = deadlines.map(dl => {
+      if (dl.id === id) {
+        return { ...dl, completed: !dl.completed };
+      }
+      return dl;
+    });
+    setDeadlines(updated);
+    saveState("syncspace_deadlines", updated);
+
+    // Recalculate Productivity Score
+    const target = deadlines.find(dl => dl.id === id);
+    if (target) {
+      const increment = target.completed ? -6 : 8;
+      const newScore = Math.min(100, Math.max(30, productivityScore + increment));
+      setProductivityScore(newScore);
+      localStorage.setItem("syncspace_productivity_score", String(newScore));
+    }
   };
 
-  // Dynamic 7-day schedule generator starting from "2026-05-30"
-  const get7DayWindow = () => {
-    const days = [];
-    const today = new Date("2026-05-30"); // Anchor date matching our mock data timeline
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(today);
-      d.setDate(today.getDate() + i);
-      
-      const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, "0");
-      const date = String(d.getDate()).padStart(2, "0");
-      const dateString = `${year}-${month}-${date}`;
-      
-      const mmm = d.toLocaleString("en-US", { month: "short" });
-      const dd = d.getDate();
-      const displayDate = `${mmm} ${dd}`;
-      
-      const weekdayName = d.toLocaleString("en-US", { weekday: "short" });
-      
-      days.push({
-        name: weekdayName,
-        date: displayDate,
-        dateString
+  // Update Deadline
+  const updateDeadline = (id: string, updatedFields: Partial<Deadline>) => {
+    const updated = deadlines.map(dl => {
+      if (dl.id === id) {
+        return { ...dl, ...updatedFields };
+      }
+      return dl;
+    });
+    setDeadlines(updated);
+    saveState("syncspace_deadlines", updated);
+  };
+
+  const handleQuickAdd = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickTitle || !quickDate) return;
+    
+    addDeadline({
+      title: quickTitle,
+      date: quickDate,
+      time: "11:59 PM",
+      category: quickCategory,
+      priority: quickPriority,
+      courseCode: quickCourse
+    });
+
+    setQuickTitle("");
+    setQuickDate("");
+    setShowQuickAdd(false);
+  };
+
+  // Smart Reschedule Breakdown
+  const getSmartReschedule = (id: string) => {
+    const dl = deadlines.find(d => d.id === id);
+    if (!dl) return null;
+
+    const baseDate = new Date(dl.date);
+    const steps: WorkBreakdownStep[] = [];
+    const phases = ["Revision / Final Submission", "Testing & Formatting", "Development / Core Coding", "Detailed Outline & Drafting", "Topic Research & Planning"];
+
+    for (let i = 0; i < 5; i++) {
+      const d = new Date(baseDate);
+      d.setDate(baseDate.getDate() - i);
+      steps.unshift({
+        date: d.toISOString().split("T")[0],
+        phase: phases[4 - i],
       });
+    }
+
+    const avgWorkload = steps.reduce((acc, step) => {
+      const count = deadlines.filter(d => d.date === step.date).length;
+      return acc + count;
+    }, 0) / 5;
+
+    const confidence = Math.round(Math.max(50, 98 - avgWorkload * 12));
+    return { steps, confidence };
+  };
+
+  // AI Chat responses
+  const askAI = (query: string) => {
+    const newChat = [...chatHistory, { sender: "user" as const, text: query, timestamp: new Date().toLocaleTimeString() }];
+    setChatHistory(newChat);
+
+    setTimeout(() => {
+      let answer = "";
+      const lower = query.toLowerCase();
+
+      const incomplete = deadlines.filter(d => !d.completed);
+      const critical = incomplete.filter(d => d.priority === "Critical");
+      const collisions = findCollisions(deadlines);
+
+      if (lower.includes("complete today") || lower.includes("should i do") || lower.includes("prioritize")) {
+        if (critical.length > 0) {
+          answer = `Based on your high workload and deadlines, you should prioritize completing **${critical[0].title}** for ${critical[0].courseCode} which is due on ${critical[0].date}. It is flagged as a Critical task.`;
+        } else if (incomplete.length > 0) {
+          answer = `Your most pressing deadline is **${incomplete[0].title}** (${incomplete[0].courseCode}) due on ${incomplete[0].date}. I suggest tackling this task first.`;
+        } else {
+          answer = "You have completed all pending deadlines. Great job! Enjoy your free time or prepare ahead for future focus blocks.";
+        }
+      } else if (lower.includes("collision") || lower.includes("stress")) {
+        if (collisions.length > 0) {
+          const firstCol = collisions[0];
+          answer = `Yes, you have a deadline collision on **${firstCol.date}** with ${firstCol.count} tasks: ${firstCol.tasks.map(t => t.title).join(", ")}. I recommend using the **Smart Plan** feature on ${firstCol.tasks[0].title} to distribute your workload before ${firstCol.date}.`;
+        } else {
+          answer = "Good news! You have no schedule collisions this week. Your stress level is Low to Moderate.";
+        }
+      } else if (lower.includes("team") || lower.includes("rahul") || lower.includes("member")) {
+        const leastBusy = teamMembers.reduce((min, cur) => cur.tasksCount < min.tasksCount ? cur : min, teamMembers[0]);
+        answer = `Regarding your team projects: **${leastBusy.name}** currently has the lowest workload with only ${leastBusy.tasksCount} active tasks. Consider delegating upcoming presentation or testing tasks to them to balance team capacity.`;
+      } else if (lower.includes("free") || lower.includes("focus") || lower.includes("study")) {
+        answer = "I've analyzed your upcoming week. Your optimal Focus Blocks are **Saturday 10:00 AM – 1:00 PM** and **Sunday 3:00 PM – 6:00 PM**. Using these slots for Advanced Algorithms prep will reduce your mid-week stress index by 15%.";
+      } else if (lower.includes("finish") || lower.includes("before friday")) {
+        const countBeforeFriday = incomplete.filter(d => new Date(d.date).getDay() < 5).length;
+        if (countBeforeFriday > 4) {
+          answer = "With 5 deadlines scheduled before Friday, it will be extremely tight. I advise rescheduling or delegating team submissions to avoid a high-stress index collision.";
+        } else {
+          answer = "Yes! You have a highly balanced schedule leading up to Friday. Completing 1.5 hours of focus study daily will get all submissions finalized easily.";
+        }
+      } else {
+        answer = "I've analyzed your academic timetable. Your overall stress index is Medium. Your workload heatmap shows a slight spike on Tuesday and Wednesday. I suggest finishing the Database design by Monday evening to keep your schedule fully balanced.";
+      }
+
+      const updatedChat = [...newChat, { sender: "ai" as const, text: answer, timestamp: new Date().toLocaleTimeString() }];
+      setChatHistory(updatedChat);
+      saveState("syncspace_chat", updatedChat);
+    }, 600);
+  };
+
+  // Helper to find collisions
+  const findCollisions = (deadlinesList: Deadline[]) => {
+    const dateMap: { [date: string]: Deadline[] } = {};
+    deadlinesList.filter(d => !d.completed).forEach(d => {
+      if (!dateMap[d.date]) dateMap[d.date] = [];
+      dateMap[d.date].push(d);
+    });
+
+    return Object.keys(dateMap)
+      .filter(date => dateMap[date].length >= 2)
+      .map(date => ({
+        date,
+        count: dateMap[date].length,
+        tasks: dateMap[date],
+      }));
+  };
+
+  // Stress Level Calculations
+  const incompleteDeadlines = deadlines.filter(d => !d.completed);
+  const activeTasksCount = incompleteDeadlines.length;
+  const examsCount = incompleteDeadlines.filter(d => d.category === "Exam").length;
+  const submissionsCount = incompleteDeadlines.filter(d => d.category === "Submission").length;
+  const projectsCount = incompleteDeadlines.filter(d => d.category === "Project").length;
+
+  const workloadPercentage = Math.min(100, Math.round((activeTasksCount / 12) * 100));
+  const freeHours = Math.max(0, 40 - activeTasksCount * 2.5);
+
+  let stressLevel = "Low";
+  let stressColor = "text-emerald-500";
+  let stressBg = "bg-emerald-500/10";
+  let stressBorder = "border-emerald-500/20";
+  
+  if (zenMode) {
+    stressLevel = "Zen (AI Optimized)";
+    stressColor = "text-emerald-400 font-extrabold shadow-sm";
+    stressBg = "bg-gradient-to-r from-emerald-500/20 to-teal-500/25 border-emerald-500/30 breathe-card shadow-lg shadow-emerald-500/10";
+    stressBorder = "border-emerald-500/40";
+  } else if (activeTasksCount > 6) {
+    stressLevel = "High";
+    stressColor = "text-rose-500";
+    stressBg = "bg-rose-500/10";
+    stressBorder = "border-rose-500/20";
+  } else if (activeTasksCount >= 3) {
+    stressLevel = "Moderate";
+    stressColor = "text-amber-500";
+    stressBg = "bg-amber-500/10";
+    stressBorder = "border-amber-500/20";
+  }
+
+  const collisions = findCollisions(deadlines);
+  const collisionCount = collisions.length;
+  const leastBusy = teamMembers.reduce((min, cur) => cur.tasksCount < min.tasksCount ? cur : min, teamMembers[0]);
+  const criticalCount = incompleteDeadlines.filter(d => d.priority === "Critical").length;
+  const semesterHealth = Math.min(100, Math.max(30, 92 - criticalCount * 2.5));
+
+  // Calendar rendering helpers
+  const renderMiniCalendar = () => {
+    const days = [];
+    const daysInJune = 30;
+    for (let d = 1; d <= daysInJune; d++) {
+      const dateString = `2026-06-${String(d).padStart(2, "0")}`;
+      const dayDeadlines = incompleteDeadlines.filter(dl => dl.date === dateString);
+      const hasCollision = dayDeadlines.length >= 2;
+      const hasDeadline = dayDeadlines.length > 0;
+
+      let cellStyle = "hover:bg-slate-100 dark:hover:bg-white/5 text-slate-800 dark:text-slate-200";
+      let indicator = null;
+
+      if (hasCollision) {
+        cellStyle = "bg-rose-500/10 dark:bg-rose-500/20 border border-rose-500/30 text-rose-500 font-bold hover:bg-rose-500/20";
+        indicator = <span className="absolute bottom-1 w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />;
+      } else if (hasDeadline) {
+        cellStyle = "bg-indigo-500/10 dark:bg-indigo-500/20 border border-indigo-500/30 text-indigo-500 font-bold hover:bg-indigo-500/20";
+        indicator = <span className="absolute bottom-1 w-1.5 h-1.5 rounded-full bg-indigo-500" />;
+      }
+
+      days.push(
+        <div 
+          key={d} 
+          className={`h-9 w-9 rounded-xl flex items-center justify-center text-xs font-semibold relative cursor-pointer transition-all duration-150 ${cellStyle}`}
+          title={hasDeadline ? `${dayDeadlines.length} Deadline(s)` : "Free Day"}
+          onClick={() => {
+            setQuickDate(dateString);
+            setShowQuickAdd(true);
+          }}
+        >
+          {d}
+          {indicator}
+        </div>
+      );
     }
     return days;
   };
 
-  const weekdays = get7DayWindow();
+  // Heatmap generation
+  const weeklyDays = (() => {
+    const arr = [];
+    const anchor = new Date("2026-05-30");
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(anchor);
+      d.setDate(anchor.getDate() + i);
+      arr.push({
+        dateStr: d.toISOString().split("T")[0],
+        label: `${d.toLocaleString("en-US", { month: "short" })} ${d.getDate()}`,
+        weekday: d.toLocaleString("en-US", { weekday: "short" })
+      });
+    }
+    return arr;
+  })();
 
-  const getHeatmapColor = (dateString: string) => {
-    // Count deadlines matching this day's date string
-    const count = deadlines.filter(dl => dl.date === dateString).length;
-    
-    if (count <= 1) return { color: "bg-emerald-500", text: "Low Workload", indicator: "🟢", count };
-    if (count <= 3) return { color: "bg-amber-500", text: "Medium Workload", indicator: "🟡", count };
-    return { color: "bg-rose-500", text: "High Workload", indicator: "🔴", count };
+  const monthlyDays = (() => {
+    const arr = [];
+    const anchor = new Date("2026-05-30");
+    for (let i = 0; i < 30; i++) {
+      const d = new Date(anchor);
+      d.setDate(anchor.getDate() + i);
+      arr.push({
+        dateStr: d.toISOString().split("T")[0],
+        label: `${d.toLocaleString("en-US", { month: "short" })} ${d.getDate()}`
+      });
+    }
+    return arr;
+  })();
+
+  const getHeatmapColorClass = (count: number) => {
+    if (count === 0) return "bg-slate-100 dark:bg-white/[0.02] border-slate-200/50 dark:border-white/[0.04]";
+    if (count === 1) return "bg-emerald-500/20 text-emerald-500 border-emerald-500/20";
+    if (count <= 3) return "bg-amber-500/20 text-amber-500 border-amber-500/20";
+    return "bg-rose-500/20 text-rose-500 border-rose-500/20";
   };
 
+  const getHoverDetails = (dateStr: string) => {
+    const dayDeadlines = deadlines.filter(d => d.date === dateStr && !d.completed);
+    const tasks = dayDeadlines.length;
+    const exams = dayDeadlines.filter(d => d.category === "Exam").length;
+    const assignments = dayDeadlines.filter(d => d.category === "Submission").length;
+    return { dateStr, tasks, exams, assignments };
+  };
+
+  const handleEditClick = (dl: Deadline) => {
+    setEditingDeadline(dl);
+    setEditTitle(dl.title);
+    setEditPriority(dl.priority);
+    setEditCategory(dl.category);
+  };
+
+  const handleEditSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingDeadline) return;
+    updateDeadline(editingDeadline.id, {
+      title: editTitle,
+      priority: editPriority,
+      category: editCategory
+    });
+    setEditingDeadline(null);
+  };
+
+  const activeSmartPlan = activeSmartPlanId ? getSmartReschedule(activeSmartPlanId) : null;
+  const activeSmartDeadline = activeSmartPlanId ? deadlines.find(d => d.id === activeSmartPlanId) : null;
+
+  // Timeline view anchor dates
+  const timelineDates = ["2026-05-30", "2026-05-31", "2026-06-01", "2026-06-02", "2026-06-03", "2026-06-05", "2026-06-07"];
+
   return (
-    <main className={`min-h-screen w-full flex flex-col items-center px-6 relative font-sans overflow-hidden transition-colors duration-500 ${
-      darkMode ? "bg-[#0a0914]" : "bg-[#F0F4F8]"
-    } ${currentPage === "dashboard" ? "py-8 justify-start" : "justify-center"}`}>
-      
-      {/* Absolute Dark Mode Toggle Button */}
-      <button
-        onClick={toggleDarkMode}
-        className={`absolute top-6 right-6 z-50 p-3.5 rounded-full border shadow-md hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer flex items-center justify-center ${
-          darkMode 
-            ? "bg-slate-900/80 border-slate-700 text-yellow-400 hover:bg-slate-800" 
-            : "bg-white/80 border-slate-200 text-slate-700 hover:bg-slate-50"
-        }`}
-        aria-label="Toggle Dark Mode"
-      >
-        {darkMode ? (
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-            <circle cx="12" cy="12" r="5" />
-            <line x1="12" y1="1" x2="12" y2="3" />
-            <line x1="12" y1="21" x2="12" y2="23" />
-            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-            <line x1="1" y1="12" x2="3" y2="12" />
-            <line x1="21" y1="12" x2="23" y2="12" />
-            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-          </svg>
-        ) : (
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-          </svg>
-        )}
-      </button>
-
-      {/* Fixed Back Arrow Button (Only active on login, signup & dashboard subpages) */}
-      {(currentPage === "login" || currentPage === "signup" || (currentPage === "dashboard" && activeSubPage !== "main")) && (
-        <button
-          onClick={(e) => {
-            if (currentPage === "dashboard") {
-              setActiveSubPage("main");
-            } else {
-              navigateToSplash(e);
-            }
-          }}
-          className={`fixed top-5 left-5 z-50 p-2 bg-transparent border-none cursor-pointer flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 ${
-            darkMode 
-              ? "text-[#38bdf8] hover:text-[#4ade80]" 
-              : "text-[#3F51B5] hover:text-[#303F9F]"
-          }`}
-          aria-label="Go back"
-        >
-          <svg className="w-[28px] h-[28px]" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-            <line x1="19" y1="12" x2="5" y2="12" />
-            <polyline points="12 19 5 12 12 5" />
-          </svg>
-        </button>
-      )}
-
-      {/* Soft Abstract Background Circles */}
-      <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden">
+    <div className={`min-h-screen w-full font-sans transition-colors duration-500 relative overflow-x-hidden ${
+      darkMode ? "bg-[#07060f] text-slate-100" : "bg-[#f4f7fa] text-slate-800"
+    }`}>
+      {/* Dynamic Glowing Blobs */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
         <div 
-          className={`absolute -top-[100px] -right-[100px] w-[400px] h-[400px] rounded-full blur-[80px] transition-colors duration-500 ${
-            darkMode ? "bg-indigo-900/35" : "bg-[#E0E7FF] opacity-80"
+          className={`absolute -top-[10%] -right-[10%] w-[500px] h-[500px] rounded-full blur-[110px] opacity-25 transition-all duration-700 ${
+            darkMode ? "bg-indigo-900" : "bg-indigo-100"
           }`}
-          style={{
-            transform: `translate(${mouseOffset.x}px, ${mouseOffset.y}px)`,
-            transition: "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), bg-color 0.5s ease"
-          }}
+          style={{ transform: `translate(${mouseOffset.x}px, ${mouseOffset.y}px)` }}
         />
         <div 
-          className={`absolute -bottom-[100px] -left-[100px] w-[350px] h-[350px] rounded-full blur-[80px] transition-colors duration-500 ${
-            darkMode ? "bg-purple-950/30" : "bg-[#EDE9FE] opacity-80"
+          className={`absolute -bottom-[10%] -left-[10%] w-[450px] h-[450px] rounded-full blur-[110px] opacity-20 transition-all duration-700 ${
+            darkMode ? "bg-purple-900" : "bg-purple-100"
           }`}
-          style={{
-            transform: `translate(${mouseOffset.x}px, ${mouseOffset.y}px)`,
-            transition: "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), bg-color 0.5s ease"
-          }}
+          style={{ transform: `translate(${mouseOffset.x}px, ${mouseOffset.y}px)` }}
         />
       </div>
 
-      {/* RENDER CURRENT PAGE */}
-      {currentPage === "splash" && (
-        /* ==========================================================================
-           SPLASH SCREEN
-           ========================================================================== */
-        <div className="w-full flex flex-col items-center justify-center animate-[fade-in_0.4s_ease-out_forwards]">
-          <section className="w-full h-[70vh] flex flex-col justify-center items-center text-center select-none relative z-10" aria-labelledby="brand-title">
-            <div className="relative w-[28vh] h-[28vh] max-w-[300px] max-h-[300px] min-w-[180px] min-h-[180px] mb-8 overflow-hidden rounded-lg">
-              <div className="absolute inset-0 w-full h-[166%] top-0 left-0">
-                <Image src="/logo.png" alt="SyncSpace Logo Symbol" fill priority className="object-cover object-top" />
-              </div>
-            </div>
-            <h1 id="brand-title" className="text-[48px] sm:text-[72px] md:text-[96px] font-bold uppercase leading-none font-sans flex items-center justify-center">
-              <span className={darkMode ? "text-[#38bdf8]" : "text-[#0c4786]"}>SYNC</span>
-              <span className={darkMode ? "text-[#4ade80]" : "text-[#1fa291]"}>SPACE</span>
-            </h1>
-            <p className={`text-[14px] sm:text-[18px] md:text-[24px] font-normal tracking-[2px] uppercase leading-relaxed max-w-[950px] mt-6 font-sans transition-colors duration-500 ${
-              darkMode ? "text-slate-400" : "text-[#6e7278]"
-            }`}>
-              COLLABORATIVE TIMETABLE & DEADLINE MANAGER
-            </p>
-          </section>
+      {/* AI Zen Particle Canvas Overlay */}
+      <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-[100] w-full h-full" />
 
-          <div className="mt-[50px] flex justify-center items-center relative z-10">
-            <button
-              onClick={handleGetStarted}
-              className="w-[220px] h-[50px] text-[18px] font-bold text-white bg-[#3F51B5] hover:bg-[#303F9F] rounded-[50px] border-none shadow-sm hover:shadow-[0_10px_20px_rgba(0,0,0,0.15)] transition-all duration-300 ease-in-out transform hover:scale-[1.05] active:scale-[0.98] cursor-pointer flex items-center justify-center font-sans btn-shine"
-            >
-              Get Started
-            </button>
-          </div>
-        </div>
-      )}
+      {/* A. AUTH & LANDING SCREENS */}
+      {currentPage !== "dashboard" && (
+        <div className="min-h-screen w-full flex flex-col items-center justify-center px-6 relative z-10 animate-fade-in">
+          {/* Theme Switcher */}
+          <button
+            onClick={() => setDarkMode(!darkMode)}
+            className={`absolute top-6 right-6 p-3 rounded-full border shadow-md hover:scale-105 active:scale-95 transition-all duration-300 flex items-center justify-center cursor-pointer ${
+              darkMode ? "bg-slate-900/80 border-slate-700 text-yellow-400" : "bg-white/80 border-slate-200 text-slate-700"
+            }`}
+          >
+            {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+          </button>
 
-      {currentPage === "login" && (
-        /* ==========================================================================
-           LOGIN SCREEN
-           ========================================================================== */
-        <div className="w-full max-w-[400px] flex flex-col items-center justify-center relative z-10 animate-[fade-in-up_0.5s_cubic-bezier(0.16,1,0.3,1)_forwards]">
-          <header className="flex flex-col items-center text-center mb-8 select-none">
-            <div className="relative w-14 h-14 mb-3 overflow-hidden rounded-md">
-              <div className="absolute inset-0 w-full h-[166%] top-0 left-0">
-                <Image src="/logo.png" alt="SyncSpace Logo" fill priority className="object-cover object-top" />
-              </div>
-            </div>
-            <h2 className="text-[40px] font-bold uppercase leading-none font-sans flex items-center justify-center">
-              <span className={darkMode ? "text-[#38bdf8]" : "text-[#0c4786]"}>SYNC</span>
-              <span className={darkMode ? "text-[#4ade80]" : "text-[#1fa291]"}>SPACE</span>
-            </h2>
-            <p className={`text-[14px] font-normal tracking-[1px] uppercase leading-none mt-2 font-sans transition-colors duration-500 ${
-              darkMode ? "text-slate-400" : "text-[#6e7278]"
-            }`}>
-              COLLABORATIVE TIMETABLE & DEADLINE MANAGER
-            </p>
-          </header>
-
-          <form onSubmit={handleLoginSubmit} className={`rounded-[24px] p-[40px] w-full flex flex-col transition-all duration-500 ${
-            darkMode 
-              ? "bg-[#131224]/80 border border-white/[0.06] shadow-[0_20px_35px_-10px_rgba(0,0,0,0.5)] backdrop-blur-md text-white" 
-              : "bg-white border-none shadow-[0_20px_35px_-10px_rgba(0,0,0,0.1)] text-slate-800"
-          }`}>
-            <h3 className={`text-[24px] font-bold text-center mb-1 font-sans ${darkMode ? "text-white" : "text-slate-800"}`}>Welcome Back</h3>
-            <p className="text-[14px] text-center mb-8 font-sans text-slate-400">Sign in to continue</p>
-
-            <div className="flex flex-col mb-5">
-              <label htmlFor="login-email" className="text-[12px] font-semibold uppercase tracking-wider mb-2 block font-sans text-slate-400">Email</label>
-              <input
-                id="login-email"
-                type="email"
-                required
-                value={loginEmail}
-                onChange={(e) => setLoginEmail(e.target.value)}
-                placeholder="student@university.edu"
-                className={`w-full h-[48px] px-4 border rounded-[12px] text-[15px] font-sans transition-all duration-200 focus:outline-none focus:ring-1 focus:ring-[#3F51B5] focus:border-[#3F51B5] ${
-                  darkMode ? "bg-black/35 border-white/[0.08] text-white placeholder-slate-500" : "bg-white border-[#E2E8F0] text-slate-800 placeholder-slate-400"
-                }`}
-              />
-            </div>
-
-            <div className="flex flex-col mb-2">
-              <label htmlFor="login-password" className="text-[12px] font-semibold uppercase tracking-wider mb-2 block font-sans text-slate-400">Password</label>
-              <div className="relative w-full flex items-center">
-                <input
-                  id="login-password"
-                  type={showLoginPassword ? "text" : "password"}
-                  required
-                  value={loginPassword}
-                  onChange={(e) => setLoginPassword(e.target.value)}
-                  placeholder="Enter your password"
-                  className={`w-full h-[48px] pl-4 pr-12 border rounded-[12px] text-[15px] font-sans transition-all duration-200 focus:outline-none focus:ring-1 focus:ring-[#3F51B5] focus:border-[#3F51B5] ${
-                    darkMode ? "bg-black/35 border-white/[0.08] text-white placeholder-slate-500" : "bg-white border-[#E2E8F0] text-slate-800 placeholder-slate-400"
-                  }`}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowLoginPassword(!showLoginPassword)}
-                  className="absolute right-4 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors duration-200 cursor-pointer flex items-center justify-center"
-                >
-                  {showLoginPassword ? (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-                      <line x1="1" y1="1" x2="23" y2="23" />
-                    </svg>
-                  ) : (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                      <circle cx="12" cy="12" r="3" />
-                    </svg>
-                  )}
-                </button>
-              </div>
-            </div>
-
-            <div className="text-right mb-6">
-              <a href="#" onClick={handleForgotPassword} className="text-[13px] font-medium text-[#3F51B5] hover:text-[#303F9F] hover:underline font-sans">Forgot Password?</a>
-            </div>
-
-            <button type="submit" className="w-full h-[48px] text-[18px] font-bold text-white bg-[#3F51B5] hover:bg-[#303F9F] rounded-[50px] border-none shadow-sm hover:shadow-[0_10px_20px_rgba(0,0,0,0.15)] transition-all duration-300 ease-in-out transform hover:scale-[1.02] active:scale-[0.98] cursor-pointer flex items-center justify-center font-sans btn-shine">
-              Sign In
-            </button>
-
-            <div className={`text-center mt-6 text-sm font-sans ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
-              Don't have an account?{" "}
-              <a href="#" onClick={navigateToSignup} className="text-[#3F51B5] font-semibold hover:underline">Sign Up</a>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {currentPage === "signup" && (
-        /* ==========================================================================
-           SIGNUP SCREEN
-           ========================================================================== */
-        <div className="w-full max-w-[400px] flex flex-col items-center justify-center relative z-10 animate-[fade-in-up_0.5s_cubic-bezier(0.16,1,0.3,1)_forwards]">
-          <header className="flex flex-col items-center text-center mb-8 select-none">
-            <div className="relative w-14 h-14 mb-3 overflow-hidden rounded-md">
-              <div className="absolute inset-0 w-full h-[166%] top-0 left-0">
-                <Image src="/logo.png" alt="SyncSpace Logo" fill priority className="object-cover object-top" />
-              </div>
-            </div>
-            <h2 className="text-[40px] font-bold uppercase leading-none font-sans flex items-center justify-center">
-              <span className={darkMode ? "text-[#38bdf8]" : "text-[#0c4786]"}>SYNC</span>
-              <span className={darkMode ? "text-[#4ade80]" : "text-[#1fa291]"}>SPACE</span>
-            </h2>
-            <p className={`text-[14px] font-normal tracking-[1px] uppercase leading-none mt-2 font-sans transition-colors duration-500 ${darkMode ? "text-slate-400" : "text-[#6e7278]"}`}>
-              COLLABORATIVE TIMETABLE & DEADLINE MANAGER
-            </p>
-          </header>
-
-          <form onSubmit={handleSignupSubmit} className={`rounded-[24px] p-[40px] w-full flex flex-col transition-all duration-500 ${
-            darkMode 
-              ? "bg-[#131224]/80 border border-white/[0.06] shadow-[0_20px_35px_-10px_rgba(0,0,0,0.5)] backdrop-blur-md text-white" 
-              : "bg-white border-none shadow-[0_20px_35px_-10px_rgba(0,0,0,0.1)] text-slate-800"
-          }`}>
-            <h3 className={`text-[24px] font-bold text-center mb-1 font-sans ${darkMode ? "text-white" : "text-slate-800"}`}>Create Account</h3>
-            <p className="text-[14px] text-center mb-8 font-sans text-slate-400">Sign up to get started</p>
-
-            <div className="flex flex-col mb-5">
-              <label htmlFor="signup-name" className="text-[12px] font-semibold uppercase tracking-wider mb-2 block font-sans text-slate-400">Full Name</label>
-              <input
-                id="signup-name"
-                type="text"
-                required
-                value={signupName}
-                onChange={(e) => setSignupName(e.target.value)}
-                placeholder="Alex Rivera"
-                className={`w-full h-[48px] px-4 border rounded-[12px] text-[15px] font-sans transition-all duration-200 focus:outline-none focus:ring-1 focus:ring-[#3F51B5] focus:border-[#3F51B5] ${
-                  darkMode ? "bg-black/35 border-white/[0.08] text-white placeholder-slate-500" : "bg-white border-[#E2E8F0] text-slate-800 placeholder-slate-400"
-                }`}
-              />
-            </div>
-
-            <div className="flex flex-col mb-5">
-              <label htmlFor="signup-email" className="text-[12px] font-semibold uppercase tracking-wider mb-2 block font-sans text-slate-400">Email</label>
-              <input
-                id="signup-email"
-                type="email"
-                required
-                value={signupEmail}
-                onChange={(e) => setSignupEmail(e.target.value)}
-                placeholder="student@university.edu"
-                className={`w-full h-[48px] px-4 border rounded-[12px] text-[15px] font-sans transition-all duration-200 focus:outline-none focus:ring-1 focus:ring-[#3F51B5] focus:border-[#3F51B5] ${
-                  darkMode ? "bg-black/35 border-white/[0.08] text-white placeholder-slate-500" : "bg-white border-[#E2E8F0] text-slate-800 placeholder-slate-400"
-                }`}
-              />
-            </div>
-
-            <div className="flex flex-col mb-6">
-              <label htmlFor="signup-password" className="text-[12px] font-semibold uppercase tracking-wider mb-2 block font-sans text-slate-400">Password</label>
-              <div className="relative w-full flex items-center">
-                <input
-                  id="signup-password"
-                  type={showSignupPassword ? "text" : "password"}
-                  required
-                  value={signupPassword}
-                  onChange={(e) => setSignupPassword(e.target.value)}
-                  placeholder="Create a password"
-                  className={`w-full h-[48px] pl-4 pr-12 border rounded-[12px] text-[15px] font-sans transition-all duration-200 focus:outline-none focus:ring-1 focus:ring-[#3F51B5] focus:border-[#3F51B5] ${
-                    darkMode ? "bg-black/35 border-white/[0.08] text-white placeholder-slate-500" : "bg-white border-[#E2E8F0] text-slate-800 placeholder-slate-400"
-                  }`}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowSignupPassword(!showSignupPassword)}
-                  className="absolute right-4 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors duration-200 cursor-pointer flex items-center justify-center"
-                >
-                  {showSignupPassword ? (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-                      <line x1="1" y1="1" x2="23" y2="23" />
-                    </svg>
-                  ) : (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                      <circle cx="12" cy="12" r="3" />
-                    </svg>
-                  )}
-                </button>
-              </div>
-            </div>
-
-            <button type="submit" className="w-full h-[48px] text-[18px] font-bold text-white bg-[#3F51B5] hover:bg-[#303F9F] rounded-[50px] border-none shadow-sm hover:shadow-[0_10px_20px_rgba(0,0,0,0.15)] transition-all duration-300 ease-in-out transform hover:scale-[1.02] active:scale-[0.98] cursor-pointer flex items-center justify-center font-sans btn-shine">
-              Sign Up
-            </button>
-
-            <div className={`text-center mt-6 text-sm font-sans ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
-              Already have an account?{" "}
-              <a href="#" onClick={navigateToLogin} className="text-[#3F51B5] font-semibold hover:underline">Sign In</a>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {currentPage === "dashboard" && (
-        /* ==========================================================================
-           MAIN DASHBOARD SYSTEM
-           ========================================================================== */
-        <div className="w-full max-w-[1100px] flex flex-col relative z-10 animate-[fade-in_0.4s_ease-out_forwards] select-none">
-          
-          {/* A. Dynamic Navigation Header Card */}
-          <header className={`rounded-[24px] p-5 flex justify-between items-center mb-8 border transition-all duration-500 ${
-            darkMode 
-              ? "bg-[#131224]/80 border-white/[0.06] shadow-[0_10px_25px_rgba(0,0,0,0.5)] backdrop-blur-md" 
-              : "bg-white border-slate-100 shadow-[0_10px_25px_rgba(0,0,0,0.05)]"
-          }`}>
-            <div className="select-none">
-              <h2 className="text-xl font-bold uppercase leading-none font-sans flex items-center">
-                <span className={darkMode ? "text-[#38bdf8]" : "text-[#0c4786]"}>SYNC</span>
-                <span className={darkMode ? "text-[#4ade80]" : "text-[#1fa291]"}>SPACE</span>
-              </h2>
-            </div>
-
-            <div className="flex items-center gap-[10px] relative">
-              <div className="relative">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowProfileDropdown(!showProfileDropdown);
-                  }}
-                  className="w-10 h-10 rounded-full bg-[#E2E8F0] hover:bg-[#cbd5e1] dark:bg-slate-700 dark:hover:bg-slate-600 transition-colors duration-200 flex items-center justify-center font-bold text-slate-800 dark:text-slate-100 cursor-pointer shadow-sm focus:outline-none border-none overflow-hidden"
-                  aria-label="User Menu"
-                >
-                  {avatarUrl ? (
-                    <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-                  ) : (
-                    "S"
-                  )}
-                </button>
-                {showProfileDropdown && (
-                  <div className={`absolute left-0 top-12 mt-1 w-52 rounded-xl border py-1.5 z-50 shadow-md font-sans transition-all duration-200 animate-[fade-in-up_0.15s_ease-out_forwards] ${
-                    darkMode 
-                      ? "bg-[#131224] border-white/[0.08] text-white shadow-[0_10px_20px_rgba(0,0,0,0.5)]" 
-                      : "bg-white border-slate-100 text-slate-800 shadow-[0_10px_20px_rgba(0,0,0,0.05)]"
-                  }`}>
-                    <button
-                      onClick={() => {
-                        setShowProfileDropdown(false);
-                        setTempAvatarUrl(avatarUrl);
-                        setShowChangeProfileModal(true);
-                      }}
-                      className="w-full text-left px-4 py-2.5 text-[14px] font-medium text-slate-600 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/[0.05] transition-colors duration-150 cursor-pointer flex items-center gap-2 border-none"
-                    >
-                      <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z" />
-                      </svg>
-                      Change Profile Picture
-                    </button>
-                  </div>
-                )}
-              </div>
-              <span className="text-[14px] font-normal text-[#64748B] dark:text-slate-400 transition-colors duration-500">
-                {loggedInEmail}
-              </span>
-              <button
-                onClick={handleLogOut}
-                className={`p-2 bg-transparent border-none cursor-pointer rounded-full transition-colors duration-200 flex items-center justify-center ${
-                  darkMode ? "hover:bg-white/[0.05]" : "hover:bg-slate-50"
-                }`}
-                title="Log Out"
-                aria-label="Log Out"
-              >
-                <svg className="w-5 h-5 text-rose-500 dark:text-rose-400" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                  <polyline points="16 17 21 12 16 7" />
-                  <line x1="21" y1="12" x2="9" y2="12" />
-                </svg>
-              </button>
-            </div>
-          </header>
-
-          {/* SUBPAGE VIEW: MAIN / HEATMAP / GROUP */}
-          {activeSubPage === "main" ? (
-            /* ==========================================
-               MAIN ROUTER VIEW
-               ========================================== */
-            <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1.8fr] gap-8 items-start animate-[fade-in_0.4s_ease-out_forwards]">
-              
-              {/* LEFT COLUMN */}
-              <div className="flex flex-col gap-8 w-full">
-                
-                {/* 1. Workload Heatmap Card */}
-                <section 
-                  onClick={() => setActiveSubPage("heatmap")}
-                  className={`rounded-[24px] p-6 border cursor-pointer transition-all duration-300 hover:scale-[1.01] ${
-                    darkMode 
-                      ? "bg-[#131224]/80 border-white/[0.06] shadow-[0_15px_30px_rgba(0,0,0,0.4)] backdrop-blur-md" 
-                      : "bg-white border-slate-100 shadow-[0_15px_30px_rgba(0,0,0,0.05)] hover:shadow-md"
-                  }`}
-                >
-                  <div className="flex justify-between items-center mb-5">
-                    <h3 className={`text-[16px] font-bold uppercase tracking-wider font-sans ${darkMode ? "text-slate-300" : "text-slate-700"}`}>
-                      Workload Heatmap (7 Days)
-                    </h3>
-                    <span className="text-[12px] font-bold text-[#3F51B5] dark:text-[#38bdf8] uppercase tracking-wider hover:underline flex items-center gap-1">
-                      Expand
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                        <polyline points="15 3 21 3 21 9" />
-                        <polyline points="9 21 3 21 3 15" />
-                        <line x1="21" y1="3" x2="14" y2="10" />
-                        <line x1="3" y1="21" x2="10" y2="14" />
-                      </svg>
-                    </span>
-                  </div>
-
-                  {/* 7-Day Mini Heatmap Grid */}
-                  <div className="grid grid-cols-7 gap-2.5">
-                    {weekdays.map((day, idx) => {
-                      const analysis = getHeatmapColor(day.dateString);
-                      return (
-                        <div 
-                          key={day.name} 
-                          className={`flex flex-col items-center p-2.5 rounded-xl border transition-all duration-300 ${
-                            darkMode 
-                              ? "bg-black/20 border-white/[0.04] hover:bg-black/40" 
-                              : "bg-slate-50 border-slate-100 hover:bg-slate-100"
-                          }`}
-                          title={`${day.name} - ${analysis.text} (${analysis.count} deadlines)`}
-                        >
-                          <span className={`text-[11px] font-bold ${darkMode ? "text-slate-400" : "text-slate-500"}`}>{day.name}</span>
-                          <span className={`text-[13px] font-bold my-1 leading-tight tracking-tight text-center ${darkMode ? "text-slate-100" : "text-slate-800"}`}>{day.date}</span>
-                          <span className={`w-3.5 h-3.5 rounded-full ${analysis.color} shadow-sm animate-pulse`} />
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  <div className="mt-5 flex justify-between items-center text-[12px] font-medium text-slate-400">
-                    <span>🟢 0-1 Low</span>
-                    <span>🟡 2-3 Med</span>
-                    <span>🔴 4+ High</span>
-                  </div>
-                </section>
-
-                {/* 2. Quick Add Deadline Form */}
-                <section className={`rounded-[24px] p-6 border transition-all duration-500 ${
-                  darkMode 
-                    ? "bg-[#131224]/80 border-white/[0.06] shadow-[0_15px_30px_rgba(0,0,0,0.4)] backdrop-blur-md text-white" 
-                    : "bg-white border-slate-100 shadow-[0_15px_30px_rgba(0,0,0,0.05)] text-slate-800"
-                }`}>
-                  <h3 className={`text-[16px] font-bold uppercase tracking-wider font-sans mb-5 ${darkMode ? "text-slate-300" : "text-slate-700"}`}>
-                    Quick Add Deadline
-                  </h3>
-                  
-                  <form onSubmit={handleAddDeadline} className="flex flex-col gap-4">
-                    {/* Title */}
-                    <div className="flex flex-col">
-                      <label htmlFor="new-title" className="text-[11px] font-semibold text-slate-400 uppercase mb-1.5 tracking-wider">Title</label>
-                      <input 
-                        id="new-title"
-                        type="text" 
-                        required
-                        value={newTitle}
-                        onChange={(e) => setNewTitle(e.target.value)}
-                        placeholder="e.g. Lab Assignment 5"
-                        className={`h-11 px-3.5 rounded-xl border text-[14px] font-sans focus:outline-none focus:ring-1 focus:ring-[#3F51B5] focus:border-[#3F51B5] transition-all duration-200 ${
-                          darkMode ? "bg-black/35 border-white/[0.08] text-white" : "bg-white border-[#E2E8F0] text-slate-800"
-                        }`}
-                      />
-                    </div>
-
-                    {/* Grid: Date and Group */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="flex flex-col">
-                        <label htmlFor="new-date" className="text-[11px] font-semibold text-slate-400 uppercase mb-1.5 tracking-wider">Date</label>
-                        <input 
-                          id="new-date"
-                          type="date" 
-                          required
-                          value={newDate}
-                          onChange={(e) => setNewDate(e.target.value)}
-                          className={`h-11 px-3.5 rounded-xl border text-[14px] font-sans focus:outline-none focus:ring-1 focus:ring-[#3F51B5] focus:border-[#3F51B5] transition-all duration-200 ${
-                            darkMode ? "bg-black/35 border-white/[0.08] text-white" : "bg-white border-[#E2E8F0] text-slate-800"
-                          }`}
-                        />
-                      </div>
-
-                      <div className="flex flex-col">
-                        <label htmlFor="new-group" className="text-[11px] font-semibold text-slate-400 uppercase mb-1.5 tracking-wider">Group</label>
-                        <select 
-                          id="new-group"
-                          value={newGroup}
-                          onChange={(e) => setNewGroup(e.target.value)}
-                          className={`h-11 px-3.5 rounded-xl border text-[14px] font-sans focus:outline-none focus:ring-1 focus:ring-[#3F51B5] focus:border-[#3F51B5] transition-all duration-200 ${
-                            darkMode ? "bg-black/35 border-white/[0.08] text-white" : "bg-white border-[#E2E8F0] text-slate-800"
-                          }`}
-                        >
-                          {groups.map(g => (
-                            <option key={g.id} value={g.name}>{g.courseCode}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* Grid: Time and Type */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="flex flex-col">
-                        <label htmlFor="new-time" className="text-[11px] font-semibold text-slate-400 uppercase mb-1.5 tracking-wider">Time</label>
-                        <input 
-                          id="new-time"
-                          type="time" 
-                          required
-                          value={newTime}
-                          onChange={(e) => setNewTime(e.target.value)}
-                          className={`h-11 px-3.5 rounded-xl border text-[14px] font-sans focus:outline-none focus:ring-1 focus:ring-[#3F51B5] focus:border-[#3F51B5] transition-all duration-200 ${
-                            darkMode ? "bg-black/35 border-white/[0.08] text-white animate-none" : "bg-white border-[#E2E8F0] text-slate-800"
-                          }`}
-                        />
-                      </div>
-
-                      <div className="flex flex-col">
-                        <label htmlFor="new-type" className="text-[11px] font-semibold text-slate-400 uppercase mb-1.5 tracking-wider">Type</label>
-                        <select 
-                          id="new-type"
-                          value={newType}
-                          onChange={(e) => setNewType(e.target.value as "Exam" | "Submission")}
-                          className={`h-11 px-3.5 rounded-xl border text-[14px] font-sans focus:outline-none focus:ring-1 focus:ring-[#3F51B5] focus:border-[#3F51B5] transition-all duration-200 ${
-                            darkMode ? "bg-black/35 border-white/[0.08] text-white" : "bg-white border-[#E2E8F0] text-slate-800"
-                          }`}
-                        >
-                          <option value="Submission">Submission</option>
-                          <option value="Exam">Exam</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <button 
-                      type="submit" 
-                      className="w-full h-11 text-base font-bold text-white bg-[#3F51B5] hover:bg-[#303F9F] rounded-[12px] border-none shadow-sm transition-all duration-300 ease-in-out transform hover:scale-[1.01] active:scale-[0.98] cursor-pointer flex items-center justify-center font-sans btn-shine mt-2"
-                    >
-                      Add Deadline
-                    </button>
-                  </form>
-                </section>
-              </div>
-
-              {/* RIGHT COLUMN */}
-              <div className="flex flex-col gap-8 w-full">
-                
-                {/* 3. Upcoming Deadlines Section */}
-                <section className={`rounded-[24px] p-6 border transition-all duration-500 ${
-                  darkMode 
-                    ? "bg-[#131224]/80 border-white/[0.06] shadow-[0_15px_30px_rgba(0,0,0,0.4)] backdrop-blur-md text-white" 
-                    : "bg-white border-slate-100 shadow-[0_15px_30px_rgba(0,0,0,0.05)] text-slate-800"
-                }`}>
-                  <h3 className={`text-[16px] font-bold uppercase tracking-wider font-sans mb-5 ${darkMode ? "text-slate-300" : "text-slate-700"}`}>
-                    Upcoming Deadlines ({deadlines.length})
-                  </h3>
-
-                  <div className="flex flex-col gap-4 max-h-[380px] overflow-y-auto pr-1">
-                    {deadlines.slice(0, 5).map(dl => {
-                      const colorMap = { Low: "bg-emerald-500", Medium: "bg-amber-500", High: "bg-rose-500" };
-                      return (
-                        <div 
-                          key={dl.id}
-                          onClick={() => setSelectedDeadline(dl)}
-                          className={`p-4 rounded-xl border flex items-center justify-between cursor-pointer transition-all duration-300 hover:translate-x-1 ${
-                            darkMode 
-                              ? "bg-black/20 border-white/[0.04] hover:bg-black/35 hover:border-white/[0.08]" 
-                              : "bg-slate-50 border-slate-100 hover:bg-slate-100 hover:border-slate-200"
-                          }`}
-                        >
-                          <div className="flex items-center gap-3">
-                            <span className={`w-3 h-3 rounded-full flex-shrink-0 ${colorMap[dl.severity]}`} />
-                            <div className="flex flex-col">
-                              <h4 className={`text-[15px] font-bold transition-colors ${darkMode ? "text-slate-100" : "text-slate-800"}`}>{dl.title}</h4>
-                              <span className="text-[12px] text-slate-400 mt-0.5">{dl.groupName.split(":")[0]} • {dl.date} at {dl.time}</span>
-                            </div>
-                          </div>
-
-                          <span className={`text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border ${
-                            dl.type === "Exam" 
-                              ? "bg-amber-500/10 border-amber-500/20 text-amber-500" 
-                              : "bg-blue-500/10 border-blue-500/20 text-blue-500"
-                          }`}>
-                            {dl.type}
-                          </span>
-                        </div>
-                      );
-                    })}
-
-                    {deadlines.length === 0 && (
-                      <div className="text-center py-10 text-slate-400 font-sans">
-                        No upcoming deadlines! Enjoy your free time! 🎉
-                      </div>
-                    )}
-                  </div>
-                </section>
-
-
-
-              </div>
-            </div>
-          ) : activeSubPage === "heatmap" ? (
-            /* ==========================================
-               FULL HEATMAP VIEW
-               ========================================== */
-            <div className={`rounded-[24px] p-[40px] border w-full flex flex-col transition-all duration-500 animate-[fade-in-up_0.5s_cubic-bezier(0.16,1,0.3,1)_forwards] ${
-              darkMode 
-                ? "bg-[#131224]/80 border-white/[0.06] shadow-[0_20px_35px_-10px_rgba(0,0,0,0.5)] backdrop-blur-md text-white" 
-                : "bg-white border-none shadow-[0_20px_35px_-10px_rgba(0,0,0,0.1)] text-slate-800"
-            }`}>
-              <div className="flex justify-between items-center mb-8 pb-4 border-b border-slate-100 dark:border-white/[0.06]">
-                <div>
-                  <h3 className="text-[24px] font-bold font-sans">Full Workload Heatmap</h3>
-                  <p className="text-[14px] text-slate-400 mt-1">Detailed calendar schedule showing exam and homework loads for the week</p>
+          {currentPage === "landing" && (
+            <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-12 items-center justify-center px-4 select-none animate-fade-in-up">
+              {/* Left Column: Heading and description */}
+              <div className="flex flex-col items-start text-left">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-indigo-500/20 bg-indigo-500/5 mb-6 text-sm font-semibold text-indigo-400 animate-pulse">
+                  <Sparkles className="w-4 h-4" />
+                  AI Academic Timetable Command Center
                 </div>
-                <button 
-                  onClick={() => setActiveSubPage("main")}
-                  className="px-4 py-2 text-sm font-semibold rounded-full bg-[#3F51B5] text-white hover:bg-[#303F9F] cursor-pointer shadow-sm flex items-center gap-1.5"
-                >
-                  ← Dashboard
-                </button>
-              </div>
 
-              {/* Full Heatmap Columns */}
-              <div className="flex flex-col gap-6 font-sans">
-                {weekdays.map((day, idx) => {
-                  const analysis = getHeatmapColor(day.dateString);
-                  return (
-                    <div 
-                      key={day.name}
-                      className={`p-5 rounded-xl border flex items-center justify-between transition-colors ${
-                        darkMode ? "bg-black/25 border-white/[0.04]" : "bg-slate-50 border-slate-100"
-                      }`}
-                    >
-                      <div className="flex items-center gap-5">
-                        <div className={`w-[110px] text-center font-bold py-2 rounded-xl text-sm ${
-                          darkMode ? "bg-white/[0.03] text-white" : "bg-white text-slate-700 shadow-sm border border-slate-100"
-                        }`}>
-                          {day.name} {day.date}
-                        </div>
-                        <div className="flex flex-col">
-                          <span className={`text-[15px] font-bold ${darkMode ? "text-slate-100" : "text-slate-800"}`}>{analysis.text}</span>
-                          <span className="text-[12px] text-slate-400 mt-0.5">{analysis.count} deadline(s) scheduled for this day</span>
-                        </div>
-                      </div>
+                <h1 className="text-5xl sm:text-6xl font-extrabold leading-tight tracking-tight flex flex-col gap-1 mb-6">
+                  <span className="text-slate-400 text-3xl font-medium tracking-wide">INTRODUCING</span>
+                  <span className="flex gap-2">
+                    <span className={darkMode ? "text-[#38bdf8]" : "text-[#0c4786]"}>SYNC</span>
+                    <span className={darkMode ? "text-[#10b981]" : "text-[#1fa291]"}>SPACE</span>
+                  </span>
+                </h1>
 
-                      <div className="flex items-center gap-4">
-                        <span className={`w-3.5 h-3.5 rounded-full ${analysis.color} shadow-md animate-pulse`} />
-                        <span className="text-sm font-bold text-slate-400 capitalize">{analysis.color.split("-")[1]} Mode</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ) : (
-            /* ==========================================
-               GROUP DETAILED VIEW
-               ========================================== */
-            selectedGroup && (
-              <div className={`rounded-[24px] p-[40px] border w-full flex flex-col transition-all duration-500 animate-[fade-in-up_0.5s_cubic-bezier(0.16,1,0.3,1)_forwards] ${
-                darkMode 
-                  ? "bg-[#131224]/80 border-white/[0.06] shadow-[0_20px_35px_-10px_rgba(0,0,0,0.5)] backdrop-blur-md text-white" 
-                  : "bg-white border-none shadow-[0_20px_35px_-10px_rgba(0,0,0,0.1)] text-slate-800"
-              }`}>
-                <div className="flex justify-between items-center mb-8 pb-4 border-b border-slate-100 dark:border-white/[0.06]">
-                  <div>
-                    <span className="text-[11px] font-bold uppercase tracking-widest px-2.5 py-1 rounded bg-[#3F51B5]/10 text-[#3F51B5] dark:text-[#38bdf8] dark:bg-white/[0.05] border border-[#3F51B5]/20 font-sans">
-                      {selectedGroup.courseCode} Group
-                    </span>
-                    <h3 className="text-[24px] font-bold font-sans mt-3">{selectedGroup.name}</h3>
-                  </div>
-                  <button 
-                    onClick={() => setActiveSubPage("main")}
-                    className="px-4 py-2 text-sm font-semibold rounded-full bg-[#3F51B5] text-white hover:bg-[#303F9F] cursor-pointer shadow-sm flex items-center gap-1.5"
+                <p className={`text-base leading-relaxed max-w-lg mb-8 ${
+                  darkMode ? "text-slate-400" : "text-slate-600"
+                }`}>
+                  Unfold a collision-free timetable in real-time. Drag the sequencer to watch multi-dimensional schedule constraints assemble into a balanced academic calendar.
+                </p>
+
+                <div className="flex flex-col sm:flex-row gap-4 mb-8">
+                  <button
+                    onClick={() => setCurrentPage("login")}
+                    className="w-[180px] h-12 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-lg transition-all hover:-translate-y-0.5 cursor-pointer border-none"
                   >
-                    ← Dashboard
+                    Sign In
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage("signup")}
+                    className={`w-[180px] h-12 text-sm font-bold rounded-xl border transition-all hover:-translate-y-0.5 cursor-pointer ${
+                      darkMode ? "bg-white/[0.03] border-white/[0.08] text-white" : "bg-white border-slate-200 text-slate-700"
+                    }`}
+                  >
+                    Create Account
                   </button>
                 </div>
 
-                {/* Group Details widgets */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 font-sans">
-                  
-                  {/* Group Members and Info */}
-                  <div className={`p-6 rounded-xl border ${
-                    darkMode ? "bg-black/25 border-white/[0.04]" : "bg-slate-50 border-slate-100"
-                  }`}>
-                    <h4 className="text-lg font-bold mb-4">Course Information</h4>
-                    <div className="flex flex-col gap-3 text-sm text-slate-400 leading-relaxed">
-                      <p><strong>Code</strong>: {selectedGroup.courseCode}</p>
-                      <p><strong>Professor</strong>: Dr. Marcus Vance</p>
-                      <p><strong>Deadlines this week</strong>: {selectedGroup.deadlinesThisWeek} active schedule items</p>
-                      <p><strong>Upcoming Nearest</strong>: {selectedGroup.nearestDeadline}</p>
+                {/* Apple-style Sequencer Drag Controller */}
+                <div className="w-full max-w-md flex flex-col gap-2 mt-4">
+                  <div className="flex justify-between items-center text-xs font-bold text-slate-400 uppercase tracking-wider">
+                    <span>Sequencer Stage</span>
+                    <span className="text-indigo-400">{sequenceProgress}%</span>
+                  </div>
+                  <input 
+                    type="range" 
+                    min="0" 
+                    max="100" 
+                    value={sequenceProgress} 
+                    onChange={(e) => setSequenceProgress(parseInt(e.target.value))} 
+                    className="w-full h-1.5 rounded-lg appearance-none bg-slate-800 accent-indigo-500 cursor-ew-resize outline-none"
+                  />
+                  <span className="text-[10px] text-slate-500 font-medium">Drag slider or move mouse over interactive canvas to sequence constraints.</span>
+                </div>
+              </div>
+
+              {/* Right Column: High Fidelity Sequencer Canvas */}
+              <div 
+                onMouseMove={handleSequenceMouseMove}
+                className={`relative w-full aspect-square max-w-[420px] rounded-3xl border flex items-center justify-center p-4 overflow-hidden transition-all duration-500 ${
+                  darkMode ? "bg-[#0d0c18]/40 border-white/[0.06] shadow-2xl animate-fade-in" : "bg-white border-slate-200 shadow-xl animate-fade-in"
+                }`}
+              >
+                <canvas 
+                  ref={sequenceCanvasRef} 
+                  className="w-full h-full"
+                />
+                
+                {/* Visual state overlays based on progress */}
+                <div className="absolute bottom-4 left-4 right-4 flex justify-between pointer-events-none text-[9px] font-bold uppercase tracking-widest text-slate-500">
+                  <span>Stage: {sequenceProgress < 30 ? "Dimensional Constraints" : sequenceProgress < 75 ? "Unfolding Calendar Matrix" : "Timetable Assembled"}</span>
+                  <span className="animate-pulse">{sequenceProgress === 100 ? "Sync Complete ✓" : "Processing"}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {(currentPage === "login" || currentPage === "signup") && (
+            <div className="w-full max-w-[400px] flex flex-col animate-fade-in-up">
+              <button
+                onClick={() => setCurrentPage("landing")}
+                className="text-xs font-bold text-slate-400 hover:text-white mb-6 self-start"
+              >
+                ← Back
+              </button>
+
+              <form 
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleSetLoggedInEmail(emailInput || "student@university.edu");
+                  setCurrentPage("dashboard");
+                }}
+                className={`rounded-3xl p-8 w-full border flex flex-col transition-all ${
+                  darkMode ? "bg-[#0d0c18]/85 border-white/[0.06] shadow-2xl" : "bg-white border-slate-200 shadow-lg text-slate-800"
+                }`}
+              >
+                <h3 className="text-xl font-bold mb-1">{currentPage === "login" ? "Welcome Back" : "Create Account"}</h3>
+                <p className="text-xs text-slate-400 mb-6">Optimized, collision-free student timetables</p>
+
+                {currentPage === "signup" && (
+                  <div className="flex flex-col mb-4">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Name</label>
+                    <div className="relative flex items-center">
+                      <User className="absolute left-4 w-4 h-4 text-slate-500" />
+                      <input
+                        type="text" required value={nameInput} onChange={(e) => setNameInput(e.target.value)} placeholder="Alex Rivera"
+                        className={`w-full h-12 pl-12 pr-4 border rounded-xl text-sm font-semibold transition-all focus:outline-none ${
+                          darkMode ? "bg-black/30 border-white/[0.08] text-white" : "bg-white border-slate-200 text-slate-800"
+                        }`}
+                      />
                     </div>
                   </div>
+                )}
 
-                  {/* Group Schedule */}
-                  <div className={`p-6 rounded-xl border ${
-                    darkMode ? "bg-black/25 border-white/[0.04]" : "bg-slate-50 border-slate-100"
+                <div className="flex flex-col mb-4">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Email</label>
+                  <div className="relative flex items-center">
+                    <Mail className="absolute left-4 w-4 h-4 text-slate-500" />
+                    <input
+                      type="email" required value={emailInput} onChange={(e) => setEmailInput(e.target.value)} placeholder="student@university.edu"
+                      className={`w-full h-12 pl-12 pr-4 border rounded-xl text-sm font-semibold transition-all focus:outline-none ${
+                        darkMode ? "bg-black/30 border-white/[0.08] text-white" : "bg-white border-slate-200 text-slate-800"
+                      }`}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-col mb-6">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Password</label>
+                  <div className="relative flex items-center">
+                    <Key className="absolute left-4 w-4 h-4 text-slate-500" />
+                    <input
+                      type={showPassword ? "text" : "password"} required value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} placeholder="••••••••"
+                      className={`w-full h-12 pl-12 pr-12 border rounded-xl text-sm font-semibold transition-all focus:outline-none ${
+                        darkMode ? "bg-black/30 border-white/[0.08] text-white" : "bg-white border-slate-200 text-slate-800"
+                      }`}
+                    />
+                    <button
+                      type="button" onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 text-slate-400 hover:text-slate-300 bg-transparent border-none cursor-pointer flex items-center justify-center"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <button type="submit" className="w-full h-12 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl">
+                  {currentPage === "login" ? "Sign In" : "Sign Up"}
+                </button>
+              </form>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* B. MAIN INTEGRATED DASHBOARD VIEW */}
+      {currentPage === "dashboard" && (
+        <div className="min-h-screen w-full flex relative z-10 animate-fade-in">
+          
+          {/* 1. MASTER SIDEBAR SYSTEM */}
+          <aside className={`w-[260px] hidden md:flex flex-col border-r h-screen sticky top-0 transition-all ${
+            darkMode ? "bg-[#0d0c18]/85 border-white/[0.06] backdrop-blur-xl" : "bg-white/80 border-slate-200 backdrop-blur-xl"
+          }`}>
+            <div className="p-6 border-b border-white/[0.04] flex items-center justify-between">
+              <h1 className="text-xl font-bold uppercase leading-none tracking-wider flex items-center">
+                <span className={darkMode ? "text-[#38bdf8]" : "text-[#0c4786]"}>SYNC</span>
+                <span className={darkMode ? "text-[#10b981]" : "text-[#1fa291]"}>SPACE</span>
+              </h1>
+            </div>
+
+            <nav className="flex-1 px-4 py-6 flex flex-col gap-2">
+              {[
+                { tab: "overview", label: "Dashboard Overview", icon: LayoutDashboard },
+                { tab: "planner", label: "Planner & Timelines", icon: Calendar },
+                { tab: "team", label: "Team Space", icon: Users },
+                { tab: "assistant", label: "AI Planner Assistant", icon: Bot },
+                { tab: "health", label: "Semester Analytics", icon: HeartPulse }
+              ].map(item => {
+                const Icon = item.icon;
+                const isActive = activeTab === item.tab;
+                return (
+                  <button
+                    key={item.tab}
+                    onClick={() => setActiveTab(item.tab as any)}
+                    className={`flex items-center gap-3.5 px-4 h-12 rounded-xl text-sm font-semibold transition-all group relative border-none text-left cursor-pointer ${
+                      isActive 
+                        ? darkMode
+                          ? "bg-white/[0.06] text-white"
+                          : "bg-indigo-50 text-[#3F51B5] shadow-sm"
+                        : darkMode
+                          ? "text-slate-400 hover:text-white hover:bg-white/[0.02]"
+                          : "text-slate-600 hover:text-[#3F51B5] hover:bg-slate-50"
+                    }`}
+                  >
+                    <Icon className={`w-5 h-5 ${isActive ? darkMode ? "text-[#38bdf8]" : "text-[#3F51B5]" : "text-slate-400"}`} />
+                    <span>{item.label}</span>
+                    {isActive && (
+                      <span className={`absolute left-0 w-1.5 h-6 rounded-r-full ${darkMode ? "bg-[#38bdf8]" : "bg-[#3F51B5]"}`} />
+                    )}
+                  </button>
+                );
+              })}
+            </nav>
+
+            <div className={`p-4 border-t flex flex-col gap-4 ${darkMode ? "border-white/[0.06]" : "border-slate-200"}`}>
+              <div className={`p-3 rounded-xl border flex flex-col gap-1.5 text-xs ${
+                darkMode ? "bg-black/20 border-white/[0.04]" : "bg-slate-50 border-slate-200"
+              }`}>
+                <div className="flex justify-between font-semibold">
+                  <span className="text-slate-400">Academic Score:</span>
+                  <span className={darkMode ? "text-emerald-400" : "text-emerald-600"}>{productivityScore}/100</span>
+                </div>
+                <div className="w-full bg-slate-200 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                  <div className="h-full bg-gradient-to-r from-indigo-500 to-emerald-500" style={{ width: `${productivityScore}%` }} />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setDarkMode(!darkMode)}
+                  className={`p-2.5 rounded-xl border flex items-center justify-center cursor-pointer ${
+                    darkMode ? "bg-slate-900 border-slate-800 text-yellow-400" : "bg-white border-slate-200 text-slate-600"
+                  }`}
+                >
+                  {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                </button>
+                <button
+                  onClick={() => {
+                    localStorage.removeItem("syncspace_email");
+                    setCurrentPage("landing");
+                  }}
+                  className={`flex-1 h-[38px] px-3 text-xs font-bold rounded-xl border cursor-pointer flex items-center justify-center gap-1.5 ${
+                    darkMode ? "bg-rose-500/10 border-rose-500/20 text-rose-400 hover:bg-rose-500/20" : "bg-rose-50 border-rose-100 text-rose-600 hover:bg-rose-100"
+                  }`}
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Log Out</span>
+                </button>
+              </div>
+            </div>
+          </aside>
+
+          {/* 2. CORE VIEWPORT CONTAINER */}
+          <div className="flex-1 flex flex-col min-w-0 z-10 relative">
+            
+            {/* Header profile / settings */}
+            <header className="h-16 flex items-center justify-between px-6 md:px-8 border-b border-slate-100 dark:border-white/[0.04] bg-transparent">
+              <div className="flex items-center gap-3">
+                <button onClick={() => setMobileMenuOpen(true)} className="p-2 md:hidden hover:bg-slate-200 dark:hover:bg-white/[0.05] rounded-xl transition-colors">
+                  <Menu className="w-5 h-5" />
+                </button>
+                <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1.5 rounded-lg border font-mono ${stressBg} ${stressColor} ${stressBorder} flex items-center gap-1.5`}>
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  Stress Index: {stressLevel}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <button className="p-2 rounded-xl text-slate-400 hover:text-white bg-transparent border-none">
+                    <Bell className="w-[18px] h-[18px]" />
+                    {activeTasksCount > 0 && <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 animate-ping" />}
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-violet-600 to-indigo-600 text-white font-bold text-xs flex items-center justify-center shadow-md">
+                    {loggedInEmail.substring(0, 1).toUpperCase()}
+                  </div>
+                  <span className="text-[13px] font-semibold text-slate-400 hidden sm:inline">{loggedInEmail}</span>
+                </div>
+              </div>
+            </header>
+
+            {/* Scrollable View Content */}
+            <main className="flex-1 p-6 md:p-8 overflow-y-auto max-w-7xl w-full mx-auto">
+              
+              {/* TAB 1: OVERVIEW */}
+              {activeTab === "overview" && (
+                <div className="flex flex-col gap-8 animate-fade-in-up">
+                  {/* Hero Forecast */}
+                  <section className={`w-full rounded-3xl p-6 md:p-8 border flex flex-col md:flex-row gap-6 items-center justify-between transition-all relative overflow-hidden ${
+                    darkMode ? "bg-gradient-to-r from-[#110e25] to-[#171434] border-white/[0.08]" : "bg-gradient-to-r from-[#eaeeff] to-[#f4f7ff] border-indigo-100 text-slate-800"
                   }`}>
-                    <h4 className="text-lg font-bold mb-4">Active Calendar</h4>
-                    <div className="flex flex-col gap-3.5">
-                      {deadlines.filter(dl => dl.groupName === selectedGroup.name).map(dl => (
-                        <div key={dl.id} className="p-3 rounded-lg bg-white dark:bg-black/20 border border-slate-100 dark:border-white/[0.04] flex items-center justify-between">
-                          <span className="text-[13px] font-bold">{dl.title}</span>
-                          <span className="text-[11px] text-slate-400">{dl.date}</span>
-                        </div>
-                      ))}
+                    {/* Animated floating subtle backdrop glow blobs */}
+                    <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+                      <div className="absolute -top-[20%] -left-[10%] w-[220px] h-[220px] rounded-full bg-indigo-500/10 blur-2xl float-glow-1" />
+                      <div className="absolute -bottom-[20%] -right-[10%] w-[220px] h-[220px] rounded-full bg-emerald-500/8 blur-2xl float-glow-2" />
+                    </div>
 
-                      {deadlines.filter(dl => dl.groupName === selectedGroup.name).length === 0 && (
-                        <div className="text-center py-6 text-slate-400 text-sm">
-                          No pending items for this group! 🛡️
+                    <div className="flex-1 flex flex-col gap-4 relative z-10">
+                      <div className="flex items-center gap-2">
+                        <span className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-500"><Sparkles className="w-5 h-5" /></span>
+                        <h2 className="text-xl font-bold font-sans tracking-wide">Academic Timetable Forecast</h2>
+                      </div>
+                      <p className={`text-sm leading-relaxed max-w-xl ${darkMode ? "text-slate-400" : "text-slate-600"}`}>
+                        {collisionCount > 0 
+                          ? `Attention! You have ${collisionCount} deadline collision(s) occurring this week. I recommend adjusting your focus study blocks to buffer early submissions.`
+                          : "Looking good! Your academic load is highly balanced for the next 7 days. Use your weekend focus blocks to prepare ahead."}
+                      </p>
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 max-w-xl">
+                        <div className={`p-4 rounded-2xl border text-xs font-semibold flex items-start gap-2.5 flex-1 ${
+                          darkMode ? "bg-black/35 border-white/[0.06] text-indigo-300" : "bg-white/60 border-slate-200 text-indigo-700"
+                        }`}>
+                          <Zap className="w-4 h-4 text-amber-500 flex-shrink-0 animate-bounce" />
+                          <span>
+                            <strong>AI Recommendation:</strong>{" "}
+                            {collisionCount > 0 
+                              ? "Start Database Design assignment early this weekend to avoid next Tuesday's schedule collision."
+                              : "Begin revising CS301 Algorithms concepts today to guarantee standard exam preparation index."}
+                          </span>
+                        </div>
+                        <button
+                          onClick={triggerStressRelief}
+                          className="h-11 px-4 text-xs font-bold text-white bg-gradient-to-r from-emerald-500 to-indigo-600 hover:from-emerald-600 hover:to-indigo-700 rounded-xl flex items-center gap-1.5 shadow-lg shadow-emerald-500/10 cursor-pointer hover:scale-105 active:scale-95 transition-all border-none flex-shrink-0"
+                          type="button"
+                        >
+                          <Sparkles className="w-4 h-4 animate-pulse" />
+                          AI Stress Decompress
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-center p-6 rounded-2xl border bg-black/10 dark:bg-black/25 border-white/[0.04] min-w-[200px] text-center relative z-10">
+                      <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Workload Forecast</span>
+                      <span className="text-4xl font-extrabold text-indigo-500 mt-2 mb-1"><AnimatedCounter value={workloadPercentage} />%</span>
+                      <span className={`text-[10px] px-2.5 py-0.5 rounded font-bold uppercase transition-all duration-300 ${stressBg} ${stressColor} ${stressBorder}`}>{stressLevel} Stress</span>
+                    </div>
+                  </section>
+
+                  {/* 4 Stats Cards */}
+                  <section className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                    {[
+                      { title: "Active Tasks", count: activeTasksCount, detail: `Exams: ${examsCount} • Submissions: ${submissionsCount}`, icon: BookOpen, color: "text-indigo-500" },
+                      { title: "Collisions", count: collisionCount, detail: "Overlapping deadlines", icon: AlertTriangle, color: "text-rose-500 animate-pulse" },
+                      { title: "Free Hours", count: freeHours, detail: "Buffer study hours", icon: Clock, color: "text-emerald-500" },
+                      { title: "Stress Index", count: stressLevel, detail: "Calculated workload stress", icon: ShieldAlert, color: stressColor }
+                    ].map((card, idx) => {
+                      const Icon = card.icon;
+                      return (
+                        <div key={idx} className={`p-5 rounded-2xl border flex flex-col justify-between h-[130px] transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-indigo-500/[0.03] hover:border-indigo-500/25 cursor-pointer ${
+                          darkMode ? "bg-[#0d0c18]/60 border-white/[0.06]" : "bg-white border-slate-200 shadow-sm"
+                        } ${zenMode ? "breathe-card border-emerald-500/35" : ""}`}>
+                          <div className="flex justify-between items-center text-slate-400">
+                            <span className="text-xs font-bold uppercase tracking-wider">{card.title}</span>
+                            <Icon className={`w-4 h-4 ${card.color}`} />
+                          </div>
+                          <div className="flex flex-col mt-2">
+                            <span className={`text-3xl font-extrabold ${card.color.includes("text-") ? card.color.split(" ")[0] : ""}`}>
+                              {typeof card.count === "number" ? <AnimatedCounter value={card.count} /> : card.count}
+                            </span>
+                            <span className="text-[10px] text-slate-500 mt-1">{card.detail}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </section>
+
+                  {/* Collision Radar & Mini Calendar */}
+                  <section className="grid grid-cols-1 lg:grid-cols-[1.6fr_1.4fr] gap-6 md:gap-8 items-start">
+                    {/* Collision Radar */}
+                    <div className={`rounded-3xl p-6 border flex flex-col gap-5 ${
+                      darkMode ? "bg-[#0d0c18]/70 border-white/[0.06]" : "bg-white border-slate-200 shadow-sm"
+                    }`}>
+                      <div className="flex justify-between items-center border-b dark:border-white/[0.04] pb-4">
+                        <div className="flex items-center gap-2">
+                          <span className="relative p-1.5 rounded-lg bg-rose-500/10 text-rose-500 flex items-center justify-center">
+                            <span className="absolute inset-0 rounded-lg bg-rose-500/30 sonar-ring" />
+                            <ShieldAlert className="w-5 h-5 relative z-10" />
+                          </span>
+                          <h3 className="text-lg font-bold font-sans">Collision Radar</h3>
+                        </div>
+                        <span className="text-xs font-semibold px-2.5 py-1 rounded bg-rose-500/10 text-rose-500 border border-rose-500/20">Active Alerts</span>
+                      </div>
+
+                      {/* Interactive Sweeping Radar Grid Visualizer */}
+                      <div className={`relative w-full h-[140px] rounded-2xl overflow-hidden border flex items-center justify-center ${
+                        darkMode ? "bg-black/45 border-rose-500/15" : "bg-rose-500/[0.02] border-rose-500/10"
+                      }`}>
+                        {/* Radar grid lines */}
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                          <div className="w-[110px] h-[110px] rounded-full border border-rose-500/10" />
+                          <div className="w-[70px] h-[70px] rounded-full border border-rose-500/10" />
+                          <div className="w-[30px] h-[30px] rounded-full border border-rose-500/10" />
+                          
+                          <div className="absolute w-[130px] h-[1px] bg-rose-500/10" />
+                          <div className="absolute h-[130px] w-[1px] bg-rose-500/10" />
+                        </div>
+
+                        {/* Sweeping radar scanner */}
+                        <div className="absolute w-[120px] h-[120px] pointer-events-none">
+                          <div className="w-full h-full rounded-full relative">
+                            <div 
+                              className="absolute top-1/2 left-1/2 w-1/2 h-[2px] bg-gradient-to-r from-rose-500 to-transparent origin-left radar-beam"
+                              style={{ transformOrigin: "0% 50%" }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Pulsing Target Blips representing Active Collisions */}
+                        {collisions.map((col, cIdx) => {
+                          const angles = [35, 120, 220, 310];
+                          const angle = angles[cIdx % angles.length];
+                          const rad = (angle * Math.PI) / 180;
+                          const distance = 25 + (cIdx * 15) % 25;
+                          const x = Math.cos(rad) * distance;
+                          const y = Math.sin(rad) * distance;
+
+                          return (
+                            <div 
+                              key={col.date}
+                              className="absolute w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_#f43f5e] flex items-center justify-center animate-ping"
+                              style={{
+                                left: `calc(50% + ${x}px - 5px)`,
+                                top: `calc(50% + ${y}px - 5px)`,
+                                animationDuration: `${1.2 + cIdx * 0.3}s`
+                              }}
+                            >
+                              <span className="absolute w-1.5 h-1.5 rounded-full bg-rose-500" />
+                            </div>
+                          );
+                        })}
+
+                        {collisions.length === 0 && (
+                          <div className="absolute text-[10px] text-slate-400 font-extrabold uppercase tracking-widest animate-pulse">
+                            Radar Clear • Timetable Secure
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex flex-col gap-4 max-h-[350px] overflow-y-auto">
+                        {collisions.map(col => (
+                          <div key={col.date} className={`p-4 rounded-2xl border flex flex-col gap-3 ${
+                            darkMode ? "bg-black/20 border-white/[0.04]" : "bg-slate-50 border-slate-200/50"
+                          }`}>
+                            <div className="flex justify-between items-center">
+                              <span className="text-xs font-bold text-slate-400">{col.date}</span>
+                              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-rose-500/20 text-rose-500">{col.count} Collision Overlap</span>
+                            </div>
+                            <div className="flex flex-col gap-1.5">
+                              {col.tasks.map(t => (
+                                <div key={t.id} className="flex justify-between items-center text-xs">
+                                  <span className="font-bold">{t.title}</span>
+                                  <span className="text-slate-400 font-mono">{t.courseCode}</span>
+                                </div>
+                              ))}
+                            </div>
+                            <div className={`p-3 rounded-xl border text-[11px] leading-relaxed ${
+                              darkMode ? "bg-rose-950/20 border-rose-900/30 text-rose-300" : "bg-rose-50 border-rose-100 text-rose-700"
+                            }`}>
+                              <strong>AI Suggestion:</strong> Shift work on <strong>{col.tasks[1]?.title || col.tasks[0].title}</strong> 2 days earlier to keep timetable stress indices balanced.
+                            </div>
+                          </div>
+                        ))}
+                        {collisions.length === 0 && (
+                          <div className="text-center py-10 text-slate-400">No deadline collisions detected. Enjoy the calm! 🎉</div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Mini Calendar Widget */}
+                    <div className={`rounded-3xl p-6 border flex flex-col gap-5 ${
+                      darkMode ? "bg-[#0d0c18]/70 border-white/[0.06]" : "bg-white border-slate-200 shadow-sm"
+                    }`}>
+                      <div className="flex justify-between items-center border-b dark:border-white/[0.04] pb-4">
+                        <div className="flex items-center gap-2">
+                          <span className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-500"><Calendar className="w-5 h-5" /></span>
+                          <h3 className="text-lg font-bold font-sans">Mini Calendar</h3>
+                        </div>
+                        <button onClick={() => setShowQuickAdd(!showQuickAdd)} className="h-8 px-3 text-[11px] font-bold text-indigo-500 bg-indigo-500/10 rounded-lg flex items-center gap-1 border-none cursor-pointer">
+                          <Plus className="w-3.5 h-3.5" /> Quick Add
+                        </button>
+                      </div>
+
+                      {showQuickAdd && (
+                        <form onSubmit={handleQuickAdd} className={`p-4 rounded-2xl border flex flex-col gap-3 animate-fade-in-up ${
+                          darkMode ? "bg-black/35 border-white/[0.06]" : "bg-slate-50 border-slate-200"
+                        }`}>
+                          <div className="flex gap-2">
+                            <input type="text" required value={quickTitle} onChange={(e)=>setQuickTitle(e.target.value)} placeholder="Event Title" className="flex-1 h-9 px-3 rounded-lg border text-xs focus:outline-none dark:bg-black/30 dark:border-white/[0.08]" />
+                            <input type="text" required value={quickCourse} onChange={(e)=>setQuickCourse(e.target.value)} placeholder="CS301" className="w-20 h-9 px-3 rounded-lg border text-xs text-center focus:outline-none dark:bg-black/30 dark:border-white/[0.08]" />
+                          </div>
+                          <div className="grid grid-cols-3 gap-2">
+                            <input type="date" required value={quickDate} onChange={(e)=>setQuickDate(e.target.value)} className="h-9 px-2 rounded-lg border text-xs dark:bg-black/30 dark:border-white/[0.08]" />
+                            <select value={quickCategory} onChange={(e)=>setQuickCategory(e.target.value as any)} className="h-9 px-1 rounded-lg border text-xs dark:bg-black/30 dark:border-white/[0.08]">
+                              <option value="Submission">Submission</option>
+                              <option value="Exam">Exam</option>
+                              <option value="Project">Project</option>
+                            </select>
+                            <select value={quickPriority} onChange={(e)=>setQuickPriority(e.target.value as any)} className="h-9 px-1 rounded-lg border text-xs dark:bg-black/30 dark:border-white/[0.08]">
+                              <option value="Normal">Normal</option>
+                              <option value="Important">Important</option>
+                              <option value="Critical">Critical</option>
+                            </select>
+                          </div>
+                          <button type="submit" className="w-full h-9 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg">Add Event</button>
+                        </form>
+                      )}
+
+                      <div className="flex justify-between items-center px-1">
+                        <span className="text-sm font-extrabold font-sans">June 2026</span>
+                      </div>
+                      <div className="grid grid-cols-7 gap-2 text-center text-[10px] font-bold text-slate-400 uppercase">
+                        <span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span><span>Su</span>
+                      </div>
+                      <div className="grid grid-cols-7 gap-2">
+                        {renderMiniCalendar()}
+                      </div>
+                    </div>
+                  </section>
+                </div>
+              )}
+
+              {/* TAB 2: PLANNER */}
+              {activeTab === "planner" && (
+                <div className="flex flex-col gap-8 animate-fade-in-up">
+                  {/* Heatmap Section */}
+                  <section className={`rounded-3xl p-6 border ${
+                    darkMode ? "bg-[#0d0c18]/70 border-white/[0.06]" : "bg-white border-slate-200 shadow-sm"
+                  }`}>
+                    <div className="flex flex-col md:flex-row justify-between gap-4 border-b dark:border-white/[0.04] pb-4 mb-5">
+                      <div className="flex items-center gap-2">
+                        <span className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-500"><BrainCircuit className="w-5 h-5" /></span>
+                        <div>
+                          <h3 className="text-lg font-bold font-sans">Academic Workload Heatmap</h3>
+                          <p className="text-xs text-slate-400 font-semibold mt-0.5">GitHub-Style activity representation</p>
+                        </div>
+                      </div>
+                      <div className="p-1.5 rounded-xl border flex gap-1 items-center dark:bg-black/25 dark:border-white/[0.05] bg-slate-50 border-slate-200">
+                        {["weekly", "monthly", "semester"].map(tab => (
+                          <button
+                            key={tab} onClick={() => { setHeatmapView(tab as any); setSelectedHeatDate(null); }}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-all ${
+                              heatmapView === tab
+                                ? darkMode ? "bg-white/[0.06] text-white" : "bg-white text-indigo-600 border border-slate-200"
+                                : "text-slate-400 hover:text-slate-300 bg-transparent border-none cursor-pointer"
+                            }`}
+                          >
+                            {tab}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-5">
+                      {heatmapView === "weekly" && (
+                        <div className="grid grid-cols-7 gap-3 font-sans">
+                          {weeklyDays.map(day => {
+                            const details = getHoverDetails(day.dateStr);
+                            return (
+                              <div
+                                key={day.dateStr} onClick={() => setSelectedHeatDate(day.dateStr)}
+                                className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col items-center justify-between text-center min-h-[110px] ${
+                                  selectedHeatDate === day.dateStr ? "ring-2 ring-indigo-500/50 scale-105" : ""
+                                } ${getHeatmapColorClass(details.tasks)}`}
+                              >
+                                <span className="text-[10px] font-bold text-slate-400 uppercase">{day.weekday}</span>
+                                <span className="text-sm font-extrabold my-2">{day.label}</span>
+                                <span className="text-[10px] font-bold">{details.tasks} Tasks</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {heatmapView === "monthly" && (
+                        <div className="grid grid-cols-6 sm:grid-cols-10 gap-2.5">
+                          {monthlyDays.map(day => {
+                            const details = getHoverDetails(day.dateStr);
+                            return (
+                              <div
+                                key={day.dateStr} onClick={() => setSelectedHeatDate(day.dateStr)}
+                                className={`h-[48px] rounded-xl border flex flex-col items-center justify-center cursor-pointer transition-all hover:scale-105 ${
+                                  selectedHeatDate === day.dateStr ? "ring-2 ring-indigo-500" : ""
+                                } ${getHeatmapColorClass(details.tasks)}`}
+                              >
+                                <span className="text-xs font-bold">{new Date(day.dateStr).getDate()}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {heatmapView === "semester" && (
+                        <div className="flex gap-2 overflow-x-auto pb-2">
+                          {Array.from({ length: 10 }).map((_, wIdx) => (
+                            <div key={wIdx} className="flex flex-col gap-1.5">
+                              <span className="text-[9px] font-bold text-slate-400 text-center uppercase">W{wIdx+1}</span>
+                              <div className="flex flex-col gap-1">
+                                {Array.from({ length: 7 }).map((_, dIdx) => {
+                                  const date = new Date(anchorDate);
+                                  date.setDate(anchorDate.getDate() + (wIdx * 7 + dIdx));
+                                  const dateStr = date.toISOString().split("T")[0];
+                                  const details = getHoverDetails(dateStr);
+                                  return (
+                                    <div
+                                      key={dateStr} onClick={() => setSelectedHeatDate(dateStr)}
+                                      className={`w-5.5 h-5.5 rounded border cursor-pointer hover:scale-110 ${
+                                        selectedHeatDate === dateStr ? "ring-1.5 ring-indigo-500" : ""
+                                      } ${getHeatmapColorClass(details.tasks)}`}
+                                    />
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {selectedHeatDate && (
+                        <div className="p-4 rounded-2xl border flex flex-col sm:flex-row gap-4 justify-between items-start dark:bg-black/35 dark:border-white/[0.05] bg-slate-50 border-slate-200">
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-[10px] text-slate-400 font-bold uppercase">Workload Details</span>
+                            <span className="text-sm font-extrabold">{selectedHeatDate}</span>
+                          </div>
+                          <div className="flex gap-3 text-xs font-bold">
+                            <span className="px-2.5 py-1 rounded bg-indigo-500/10 text-indigo-500">Tasks: {getHoverDetails(selectedHeatDate).tasks}</span>
+                            <span className="px-2.5 py-1 rounded bg-amber-500/10 text-amber-500">Exams: {getHoverDetails(selectedHeatDate).exams}</span>
+                          </div>
                         </div>
                       )}
                     </div>
+                  </section>
+
+                  {/* Tasks and Smart Plan */}
+                  <section className="grid grid-cols-1 lg:grid-cols-[1.7fr_1.3fr] gap-6 md:gap-8 items-start">
+                    {/* Deadlines List */}
+                    <div className={`rounded-3xl p-6 border flex flex-col gap-5 ${
+                      darkMode ? "bg-[#0d0c18]/70 border-white/[0.06]" : "bg-white border-slate-200 shadow-sm"
+                    }`}>
+                      <div className="flex justify-between items-center border-b dark:border-white/[0.04] pb-4">
+                        <h3 className="text-lg font-bold font-sans">Academic Deadlines</h3>
+                        <div className="flex gap-2">
+                          <select value={courseFilter} onChange={(e)=>setCourseFilter(e.target.value)} className="h-8 px-2 rounded-lg border text-xs focus:outline-none dark:bg-black/30 dark:border-white/[0.06]">
+                            <option value="All">All Courses</option><option value="CS301">CS301</option><option value="CS302">CS302</option><option value="MA201">MA201</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-3.5 max-h-[460px] overflow-y-auto pr-1">
+                        {deadlines
+                          .filter(d => courseFilter === "All" ? true : d.courseCode === courseFilter)
+                          .map(dl => {
+                            const priorityColor = dl.priority === "Critical" ? "text-rose-500 bg-rose-500/10 border-rose-500/20" : dl.priority === "Important" ? "text-amber-500 bg-amber-500/10 border-amber-500/20" : "text-emerald-500 bg-emerald-500/10 border-emerald-500/20";
+                            return (
+                              <div key={dl.id} className={`p-4 rounded-2xl border flex items-center justify-between group transition-all ${
+                                dl.completed ? "opacity-55" : darkMode ? "bg-black/20 border-white/[0.04] hover:bg-black/30" : "bg-slate-50 border-slate-200/50 hover:bg-slate-100/50"
+                              }`}>
+                                <div className="flex items-center gap-3">
+                                  <button onClick={() => toggleCompleteDeadline(dl.id)} className="p-1 bg-transparent border-none cursor-pointer flex items-center justify-center">
+                                    {dl.completed ? <CheckCircle2 className="w-5 h-5 text-indigo-500" /> : <Circle className="w-5 h-5 text-slate-400 group-hover:text-indigo-400" />}
+                                  </button>
+                                  <div className="flex flex-col">
+                                    <h4 className={`text-sm font-bold font-sans ${dl.completed ? "line-through text-slate-500" : ""}`}>{dl.title}</h4>
+                                    <span className="text-[11px] text-slate-400 mt-1">{dl.courseCode} • Due {dl.date}</span>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-3">
+                                  <div className="flex flex-col items-end gap-1">
+                                    <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${priorityColor}`}>{dl.priority}</span>
+                                    <span className="text-[9px] font-extrabold uppercase tracking-wide border px-2 py-0.5 rounded-full dark:border-white/[0.08]">{dl.category}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                    <button onClick={() => handleEditClick(dl)} className="p-2 hover:bg-slate-200 dark:hover:bg-white/5 rounded-lg text-slate-400 hover:text-indigo-500 border-none cursor-pointer"><Edit2 className="w-3.5 h-3.5" /></button>
+                                    <button onClick={() => setActiveSmartPlanId(dl.id)} className={`p-2 hover:bg-slate-200 dark:hover:bg-white/5 rounded-lg border-none cursor-pointer ${activeSmartPlanId === dl.id ? "text-amber-500" : "text-slate-400 hover:text-amber-500"}`}><Zap className="w-3.5 h-3.5" /></button>
+                                    <button onClick={() => deleteDeadline(dl.id)} className="p-2 hover:bg-slate-200 dark:hover:bg-white/5 rounded-lg text-slate-400 hover:text-rose-500 border-none cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </div>
+
+                    {/* Reschedule Engine */}
+                    <div className={`rounded-3xl p-6 border flex flex-col gap-5 sticky top-20 ${
+                      darkMode ? "bg-[#0d0c18]/70 border-white/[0.06]" : "bg-white border-slate-200 shadow-sm"
+                    }`}>
+                      <div className="flex justify-between items-center border-b dark:border-white/[0.04] pb-4">
+                        <div className="flex items-center gap-2">
+                          <span className="p-1.5 rounded bg-amber-500/10 text-amber-500"><Zap className="w-5 h-5 animate-pulse" /></span>
+                          <h3 className="text-lg font-bold font-sans">Smart Reschedule Engine</h3>
+                        </div>
+                      </div>
+
+                      {activeSmartPlan ? (
+                        <div className="flex flex-col gap-4 animate-fade-in-up font-sans">
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-[10px] text-slate-400 font-bold uppercase">Target Task</span>
+                            <span className="text-sm font-extrabold">{activeSmartDeadline?.title}</span>
+                          </div>
+                          <div className="flex justify-between items-center p-3 rounded-xl border bg-black/10 dark:bg-black/20 border-white/[0.04] text-xs">
+                            <span className="text-slate-400">AI Confidence Score:</span>
+                            <span className="text-emerald-400 font-extrabold">{activeSmartPlan.confidence}%</span>
+                          </div>
+                          <div className="flex flex-col gap-4 border-l-2 border-indigo-500/30 pl-4 py-1 mt-2">
+                            {activeSmartPlan.steps.map((step, idx) => (
+                              <div key={idx} className="flex flex-col gap-0.5 relative">
+                                <span className="absolute -left-5 top-1.5 w-2 h-2 rounded-full bg-indigo-500" />
+                                <div className="flex justify-between text-[11px] text-slate-400">
+                                  <span>{step.date}</span>
+                                  <span className="text-indigo-400 uppercase font-bold">Phase {idx+1}</span>
+                                </div>
+                                <span className="text-sm font-bold">{step.phase}</span>
+                              </div>
+                            ))}
+                          </div>
+                          <button onClick={() => { alert("Smart breakdown loaded into focus blocks!"); setActiveSmartPlanId(null); }} className="w-full h-11 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl cursor-pointer">Apply Study Breakdown</button>
+                        </div>
+                      ) : (
+                        <div className="text-center py-20 text-slate-400 flex flex-col items-center gap-3">
+                          <BrainCircuit className="w-8 h-8 text-slate-500" />
+                          <span className="text-xs">Click the lightning <Zap className="w-3.5 h-3.5 inline mx-0.5" /> icon next to any upcoming deadline to generate AI reschedule focus breakdowns.</span>
+                        </div>
+                      )}
+                    </div>
+                  </section>
+
+                  {/* Vertical Timeline */}
+                  <section className={`rounded-3xl p-6 border flex flex-col gap-6 ${
+                    darkMode ? "bg-[#0d0c18]/70 border-white/[0.06]" : "bg-white border-slate-200 shadow-sm"
+                  }`}>
+                    <div className="flex items-center gap-2 border-b dark:border-white/[0.04] pb-4">
+                      <span className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-500"><Calendar className="w-5 h-5" /></span>
+                      <div>
+                        <h3 className="text-lg font-bold font-sans">Academic Timeline</h3>
+                        <p className="text-xs text-slate-400 font-semibold mt-0.5">Chronological overview of team and course deadlines</p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-6 pl-4 border-l-2 border-slate-200/60 dark:border-white/[0.04] py-2 relative">
+                      {timelineDates.map(dateStr => {
+                        const dayDeadlines = deadlines.filter(d => d.date === dateStr && !d.completed);
+                        if (dayDeadlines.length === 0) return null;
+                        const dObj = new Date(dateStr);
+                        return (
+                          <div key={dateStr} className="flex flex-col md:flex-row md:gap-8 relative">
+                            <span className="absolute -left-[23px] top-1.5 w-3 h-3 rounded-full bg-indigo-500" />
+                            <div className="w-[120px] flex-shrink-0 flex flex-col gap-0.5">
+                              <span className="text-xs font-extrabold text-indigo-400">{dObj.toLocaleDateString("en-US", { weekday: 'short', month: 'short', day: 'numeric' })}</span>
+                            </div>
+                            <div className="flex-1 flex flex-col gap-2.5">
+                              {dayDeadlines.map(dl => (
+                                <div key={dl.id} className={`p-3 rounded-xl border flex justify-between items-center ${
+                                  darkMode ? "bg-black/20 border-white/[0.04]" : "bg-slate-50 border-slate-200"
+                                }`}>
+                                  <div className="flex flex-col">
+                                    <span className="text-xs font-bold">{dl.title}</span>
+                                    <span className="text-[10px] text-slate-400 mt-0.5">{dl.courseCode} • {dl.time}</span>
+                                  </div>
+                                  <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-500 border border-indigo-500/20">{dl.category}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </section>
+                </div>
+              )}
+
+              {/* TAB 3: TEAM */}
+              {activeTab === "team" && (
+                <div className="flex flex-col gap-8 animate-fade-in-up">
+                  {/* Collaboration score */}
+                  <section className={`w-full rounded-3xl p-6 md:p-8 border flex flex-col md:flex-row justify-between gap-6 transition-all ${
+                    darkMode ? "bg-gradient-to-r from-[#0d0c18] to-[#121124] border-white/[0.06]" : "bg-gradient-to-r from-indigo-50/50 to-slate-50 border-slate-200 text-slate-800"
+                  }`}>
+                    <div className="flex-1 flex flex-col gap-3">
+                      <div className="flex items-center gap-2">
+                        <span className="p-1.5 rounded bg-indigo-500/10 text-indigo-500"><Users className="w-5 h-5" /></span>
+                        <h2 className="text-xl font-bold font-sans">Team Collaboration Hub</h2>
+                      </div>
+                      <p className={`text-sm leading-relaxed max-w-xl ${darkMode ? "text-slate-400" : "text-slate-600"}`}>
+                        Distribute group assignment workloads, view real-time availability syncs, and balance peer capacity.
+                      </p>
+                      <div className={`p-3 rounded-xl border text-xs font-semibold flex items-center gap-2.5 max-w-xl ${
+                        darkMode ? "bg-black/25 border-white/[0.05] text-[#38bdf8]" : "bg-white border-slate-200 text-indigo-600"
+                      }`}>
+                        <Sparkles className="w-4 h-4 text-amber-500 animate-pulse" />
+                        <span><strong>AI Insight:</strong> {leastBusy.name} currently has the lowest active workload ({leastBusy.tasksCount} tasks). Consider allocating upcoming presentation prep to them.</span>
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-center p-6 rounded-2xl border bg-black/10 dark:bg-black/25 border-white/[0.04] min-w-[200px] text-center">
+                      <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Collaboration Score</span>
+                      <span className="text-4xl font-extrabold text-[#38bdf8] mt-2 mb-1">92/100</span>
+                      <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">Highly Synced</span>
+                    </div>
+                  </section>
+
+                  {/* Members workload & Free study block finder */}
+                  <section className="grid grid-cols-1 lg:grid-cols-[1.6fr_1.4fr] gap-6 md:gap-8 items-start">
+                    {/* Workloads */}
+                    <div className={`rounded-3xl p-6 border flex flex-col gap-6 ${
+                      darkMode ? "bg-[#0d0c18]/70 border-white/[0.06]" : "bg-white border-slate-200 shadow-sm"
+                    }`}>
+                      <div className="flex justify-between items-center border-b dark:border-white/[0.04] pb-4">
+                        <div className="flex items-center gap-2">
+                          <span className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-500"><Users className="w-5 h-5" /></span>
+                          <h3 className="text-lg font-bold font-sans">Workload Balance</h3>
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-5">
+                        {teamMembers.map(member => {
+                          const workloadPercent = Math.round((member.tasksCount / member.capacity) * 100);
+                          return (
+                            <div key={member.name} className="flex flex-col gap-2">
+                              <div className="flex justify-between items-center text-xs font-bold">
+                                <span>{member.name}</span>
+                                <span className="text-slate-400">{member.tasksCount} Tasks</span>
+                              </div>
+                              <div className="w-full h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                                <div 
+                                  className={`h-full rounded-full transition-all duration-500 ${
+                                    member.availability === "Highly Busy" ? "bg-rose-500" : member.availability === "Busy" ? "bg-amber-500" : "bg-emerald-500"
+                                  }`} 
+                                  style={{ width: `${workloadPercent}%` }} 
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Free Study Blocks */}
+                    <div className={`rounded-3xl p-6 border flex flex-col gap-5 ${
+                      darkMode ? "bg-[#0d0c18]/70 border-white/[0.06]" : "bg-white border-slate-200 shadow-sm"
+                    }`}>
+                      <div className="flex justify-between items-center border-b dark:border-white/[0.04] pb-4">
+                        <div className="flex items-center gap-2">
+                          <span className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-500"><Clock className="w-5 h-5" /></span>
+                          <h3 className="text-lg font-bold font-sans">Free Time Finder</h3>
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-4 font-sans text-xs">
+                        {[
+                          { title: "Friday Block", time: "4:00 PM – 7:00 PM (3 Hrs)", status: "High Availability", color: "text-emerald-500 bg-emerald-500/10" },
+                          { title: "Saturday Morning", time: "10:00 AM – 1:00 PM (3 Hrs)", status: "High Availability", color: "text-emerald-500 bg-emerald-500/10" },
+                          { title: "Sunday Focus", time: "3:00 PM – 6:00 PM (3 Hrs)", status: "Medium Study Block", color: "text-amber-500 bg-amber-500/10" }
+                        ].map((block, idx) => (
+                          <div key={idx} className={`p-4 rounded-2xl border flex items-center justify-between ${
+                            darkMode ? "bg-black/25 border-white/[0.04]" : "bg-slate-50 border-slate-200"
+                          }`}>
+                            <div className="flex flex-col">
+                              <span className="text-sm font-extrabold">{block.title}</span>
+                              <span className="text-slate-400 mt-1 font-semibold">{block.time}</span>
+                            </div>
+                            <span className={`font-bold px-2.5 py-1 rounded-lg ${block.color}`}>{block.status}</span>
+                          </div>
+                        ))}
+                        <div className={`p-4 rounded-2xl border text-[11px] leading-relaxed ${
+                          darkMode ? "bg-emerald-950/20 border-emerald-900/30 text-emerald-400" : "bg-emerald-50 border-emerald-100 text-emerald-700"
+                        }`}>
+                          <strong>AI Suggestion:</strong> Use the <strong>Saturday Morning</strong> focus block for Advanced Algorithms preparation to decrease your upcoming midterm stress index by 15%.
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+              )}
+
+              {/* TAB 4: ASSISTANT */}
+              {activeTab === "assistant" && (
+                <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_0.5fr] gap-6 md:gap-8 items-start h-[calc(100vh-160px)] animate-fade-in-up">
+                  {/* Chat interface */}
+                  <div className={`rounded-3xl border flex flex-col h-full overflow-hidden ${
+                    darkMode ? "bg-[#0d0c18]/70 border-white/[0.06] backdrop-blur-md" : "bg-white border-slate-200 shadow-sm"
+                  }`}>
+                    <div className="p-5 border-b dark:border-white/[0.04] border-slate-100 flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <span className="p-2 rounded bg-indigo-500/10 text-indigo-500"><Bot className="w-5 h-5" /></span>
+                        <div>
+                          <h3 className="text-sm font-bold font-sans">AI Planner Assistant</h3>
+                          <span className="text-[9px] text-emerald-500 font-semibold flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" /> Live Context Active
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex-1 p-5 overflow-y-auto flex flex-col gap-4">
+                      {chatHistory.map((msg, idx) => {
+                        const isUser = msg.sender === "user";
+                        return (
+                          <div key={idx} className={`flex gap-3 max-w-[85%] text-xs font-sans leading-relaxed ${isUser ? "self-end flex-row-reverse" : "self-start"}`}>
+                            <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-xs shadow-md ${isUser ? "bg-gradient-to-tr from-violet-600 to-indigo-600 text-white" : "bg-slate-800 text-indigo-400"}`}>
+                              {isUser ? "U" : <Bot className="w-4 h-4 text-[#38bdf8]" />}
+                            </div>
+                            <div className={`p-4 rounded-2xl border ${isUser ? "bg-indigo-50 border-indigo-100 dark:bg-white/[0.05] dark:border-white/[0.08]" : "bg-slate-50 border-slate-200 dark:bg-black/35 dark:border-white/[0.04] text-slate-300"}`}>
+                              <p className="whitespace-pre-line" dangerouslySetInnerHTML={{ __html: msg.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
+                            </div>
+                          </div>
+                        );
+                      })}
+                      <div ref={chatEndRef} />
+                    </div>
+
+                    <form onSubmit={(e)=>{ e.preventDefault(); if(!assistantInput.trim())return; askAI(assistantInput); setAssistantInput(""); }} className="p-4 border-t dark:border-white/[0.04] border-slate-100 flex gap-2">
+                      <input type="text" value={assistantInput} onChange={(e)=>setAssistantInput(e.target.value)} placeholder="Ask about timetable collisions, stress score, focus blocks..." className="flex-1 h-12 px-4 rounded-xl border text-xs focus:outline-none dark:bg-black/35 dark:border-white/[0.08]" />
+                      <button type="submit" className="w-12 h-12 rounded-xl text-white bg-indigo-600 flex items-center justify-center border-none cursor-pointer"><Send className="w-4 h-4" /></button>
+                    </form>
                   </div>
 
+                  {/* Shortcuts panel */}
+                  <div className="flex flex-col gap-6 font-sans">
+                    <div className={`rounded-3xl p-5 border flex flex-col gap-4 ${
+                      darkMode ? "bg-[#0d0c18]/70 border-white/[0.06]" : "bg-white border-slate-200 shadow-sm"
+                    }`}>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Quick Suggestions</span>
+                      <div className="flex flex-col gap-2">
+                        {[
+                          "What should I complete today?",
+                          "Which task should I prioritize?",
+                          "Do I have any deadline collisions?",
+                          "When are my study focus blocks?"
+                        ].map((q, idx) => (
+                          <button key={idx} onClick={()=>askAI(q)} className="w-full text-left p-3 rounded-xl border text-xs font-bold transition-all hover:-translate-y-0.5 cursor-pointer dark:bg-black/20 dark:border-white/[0.04] hover:dark:bg-black/35 bg-slate-50 border-slate-200 hover:bg-slate-100">{q}</button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            )
+              )}
+
+              {/* TAB 5: HEALTH */}
+              {activeTab === "health" && (
+                <div className="flex flex-col gap-8 animate-fade-in-up">
+                  {/* Semester health hero */}
+                  <section className={`w-full rounded-3xl p-6 md:p-8 border flex flex-col md:flex-row justify-between gap-6 transition-all ${
+                    darkMode ? "bg-gradient-to-r from-[#0d0c18] to-[#14122d] border-white/[0.06]" : "bg-gradient-to-r from-[#eef2ff] to-[#f5f7ff] border-indigo-100 text-slate-800"
+                  }`}>
+                    <div className="flex-1 flex flex-col gap-3">
+                      <div className="flex items-center gap-2">
+                        <span className="p-1.5 rounded bg-emerald-500/10 text-emerald-500"><HeartPulse className="w-5 h-5" /></span>
+                        <h2 className="text-xl font-bold font-sans">Semester Academic Health</h2>
+                      </div>
+                      <p className={`text-sm leading-relaxed max-w-xl ${darkMode ? "text-slate-400" : "text-slate-600"}`}>
+                        Dynamic index derived from total workloads, collision radars, and task complete rates.
+                      </p>
+                      <div className="flex gap-3 text-xs font-bold">
+                        <span className="px-3 py-1 rounded-xl border dark:border-white/[0.06]">Exams Pending: {examsCount}</span>
+                        <span className="px-3 py-1 rounded-xl border dark:border-white/[0.06]">Submissions Pending: {submissionsCount}</span>
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-center p-6 rounded-2xl border bg-black/10 dark:bg-black/25 border-white/[0.04] min-w-[200px] text-center">
+                      <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Health Score</span>
+                      <span className="text-4xl font-extrabold text-emerald-500 mt-2 mb-1">{semesterHealth}%</span>
+                      <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">Optimal Stability</span>
+                    </div>
+                  </section>
+
+                  {/* Productivity Gauge & Chart Grid */}
+                  <section className="grid grid-cols-1 lg:grid-cols-[1.25fr_1.75fr] gap-6 md:gap-8 items-start">
+                    {/* Circle gauge */}
+                    <div className={`rounded-3xl p-6 border flex flex-col gap-6 ${
+                      darkMode ? "bg-[#0d0c18]/70 border-white/[0.06]" : "bg-white border-slate-200 shadow-sm"
+                    }`}>
+                      <div className="flex items-center gap-2 border-b dark:border-white/[0.04] pb-4">
+                        <span className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-500"><Award className="w-5 h-5" /></span>
+                        <h3 className="text-lg font-bold font-sans">Productivity Meter</h3>
+                      </div>
+                      <div className="flex flex-col items-center py-4 relative">
+                        <div className="w-32 h-32 rounded-full border-8 border-slate-200/50 dark:border-slate-800 flex items-center justify-center relative">
+                          <svg className="absolute top-[-8px] left-[-8px] w-[144px] h-[144px] transform -rotate-90">
+                            <circle cx="72" cy="72" r="64" stroke="url(#g1)" strokeWidth="8" fill="transparent" strokeDasharray="402" strokeDashoffset={402 - (402 * productivityScore) / 100} strokeLinecap="round" />
+                            <defs>
+                              <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stopColor="#3F51B5" /><stop offset="100%" stopColor="#10b981" />
+                              </linearGradient>
+                            </defs>
+                          </svg>
+                          <div className="flex flex-col items-center">
+                            <span className="text-3xl font-extrabold">{productivityScore}</span>
+                            <span className="text-[10px] text-slate-400 font-bold">Index</span>
+                          </div>
+                        </div>
+                        <span className="text-xs text-emerald-500 mt-5 font-bold flex items-center gap-0.5"><ChevronUp className="w-4 h-4" />+12% this week</span>
+                      </div>
+                    </div>
+
+                    {/* Workload curve */}
+                    <div className={`rounded-3xl p-6 border flex flex-col gap-6 ${
+                      darkMode ? "bg-[#0d0c18]/70 border-white/[0.06]" : "bg-white border-slate-200 shadow-sm"
+                    }`}>
+                      <div className="flex items-center gap-2 border-b dark:border-white/[0.04] pb-4">
+                        <span className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-500"><TrendingUp className="w-5 h-5" /></span>
+                        <h3 className="text-lg font-bold font-sans">Workload curve</h3>
+                      </div>
+                      <div className="h-[180px] w-full relative">
+                        <svg className="w-full h-full" viewBox="0 0 500 180" preserveAspectRatio="none">
+                          <path d="M0,150 C50,140 100,50 150,70 C200,90 250,150 300,120 C350,90 400,20 450,50 C480,70 500,110 500,110 L500,180 L0,180 Z" fill="url(#g2)" opacity="0.15" />
+                          <path d="M0,150 C50,140 100,50 150,70 C200,90 250,150 300,120 C350,90 400,20 450,50 C480,70 500,110 500,110" stroke="#3F51B5" strokeWidth="3" fill="none" />
+                          <defs>
+                            <linearGradient id="g2" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stopColor="#3F51B5" /><stop offset="100%" stopColor="#3F51B5" stopOpacity="0" /></linearGradient>
+                          </defs>
+                          <circle cx="150" cy="70" r="4.5" fill="#3f51b5" /><circle cx="400" cy="20" r="4.5" fill="#ef4444" className="animate-pulse" />
+                        </svg>
+                        <div className="flex justify-between text-[9px] font-bold text-slate-400 uppercase mt-4 px-1">
+                          <span>W1</span><span>W3 (Midterm)</span><span>W6</span><span>W9 (Projects)</span><span>W12 (Finals)</span>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+              )}
+
+            </main>
+          </div>
+
+          {/* 3. MOBILE MENU SIDEBAR DRAWER DRAWER */}
+          {mobileMenuOpen && (
+            <div className="fixed inset-0 z-50 flex md:hidden animate-fade-in">
+              <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)} />
+              <aside className={`relative w-[280px] h-full flex flex-col p-6 animate-slide-in-right ${
+                darkMode ? "bg-[#0d0c18] border-r border-white/[0.06]" : "bg-white border-r border-slate-200"
+              }`}>
+                <div className="flex justify-between items-center mb-8 pb-4 border-b dark:border-white/[0.06] border-slate-200">
+                  <h1 className="text-lg font-bold uppercase flex items-center">
+                    <span className={darkMode ? "text-[#38bdf8]" : "text-[#0c4786]"}>SYNC</span>
+                    <span className={darkMode ? "text-[#10b981]" : "text-[#1fa291]"}>SPACE</span>
+                  </h1>
+                  <button onClick={() => setMobileMenuOpen(false)} className="p-1 rounded-lg border-none hover:bg-slate-200 dark:hover:bg-white/5"><X className="w-5 h-5" /></button>
+                </div>
+
+                <nav className="flex-1 flex flex-col gap-2">
+                  {[
+                    { tab: "overview", label: "Dashboard Overview", icon: LayoutDashboard },
+                    { tab: "planner", label: "Planner & Timelines", icon: Calendar },
+                    { tab: "team", label: "Team Space", icon: Users },
+                    { tab: "assistant", label: "AI Planner Assistant", icon: Bot },
+                    { tab: "health", label: "Semester Analytics", icon: HeartPulse }
+                  ].map(item => {
+                    const Icon = item.icon;
+                    return (
+                      <button
+                        key={item.tab}
+                        onClick={() => { setActiveTab(item.tab as any); setMobileMenuOpen(false); }}
+                        className={`flex items-center gap-3.5 px-4 h-12 rounded-xl text-sm font-semibold text-left border-none cursor-pointer ${
+                          activeTab === item.tab 
+                            ? darkMode ? "bg-white/[0.06] text-white" : "bg-indigo-50 text-[#3F51B5]"
+                            : "text-slate-400 hover:text-white bg-transparent"
+                        }`}
+                      >
+                        <Icon className="w-5 h-5" />
+                        <span>{item.label}</span>
+                      </button>
+                    );
+                  })}
+                </nav>
+
+                <div className="pt-4 border-t dark:border-white/[0.06] border-slate-200 flex items-center justify-between">
+                  <button onClick={() => setDarkMode(!darkMode)} className={`p-2 rounded-xl border flex items-center justify-center cursor-pointer ${darkMode ? "bg-slate-900 border-slate-800 text-yellow-400" : "bg-white border-slate-200 text-slate-600"}`}>
+                    {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                  </button>
+                  <button onClick={() => { localStorage.removeItem("syncspace_email"); setCurrentPage("landing"); setMobileMenuOpen(false); }} className="text-xs font-bold text-rose-500 hover:underline bg-transparent border-none cursor-pointer">
+                    Log Out
+                  </button>
+                </div>
+              </aside>
+            </div>
           )}
 
         </div>
       )}
 
-      {/* DYNAMIC EDIT / DETAIL VIEW MODAL */}
-      {selectedDeadline && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-[fade-in_0.2s_ease-out_forwards]">
-          <div 
-            className={`rounded-[24px] p-8 max-w-[420px] w-full border relative animate-[fade-in-up_0.3s_cubic-bezier(0.16,1,0.3,1)_forwards] ${
-              darkMode 
-                ? "bg-[#131224] border-white/[0.08] text-white shadow-[0_25px_50px_rgba(0,0,0,0.6)]" 
-                : "bg-white border-slate-100 text-slate-800 shadow-[0_25px_50px_rgba(0,0,0,0.15)]"
-            }`}
-          >
-            {/* Modal Header */}
-            <div className="flex justify-between items-start mb-6">
-              <span className={`text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border ${
-                selectedDeadline.type === "Exam" 
-                  ? "bg-amber-500/10 border-amber-500/20 text-amber-500" 
-                  : "bg-blue-500/10 border-blue-500/20 text-blue-500"
-              }`}>
-                {selectedDeadline.type}
-              </span>
-              <button 
-                onClick={() => setSelectedDeadline(null)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 cursor-pointer bg-transparent border-none"
-                aria-label="Close modal"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <h4 className="text-xl font-bold mb-4 font-sans">{selectedDeadline.title}</h4>
+      {/* DYNAMIC EDIT DEADLINE MODAL IN SPA */}
+      {editingDeadline && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className={`rounded-3xl p-6 max-w-[380px] w-full border relative ${
+            darkMode ? "bg-[#0d0c18] border-white/[0.08] text-white" : "bg-white border-slate-200 text-slate-800"
+          }`}>
+            <h4 className="text-base font-bold font-sans mb-4">Edit Deadline Settings</h4>
             
-            <div className="flex flex-col gap-3.5 text-[14px] text-slate-400 font-sans mb-8">
-              <p><strong>Course Group</strong>: {selectedDeadline.groupName}</p>
-              <p><strong>Scheduled Date</strong>: {selectedDeadline.date}</p>
-              <p><strong>Target Time</strong>: {selectedDeadline.time}</p>
-              <p className="flex items-center gap-1.5">
-                <strong>Workload Status</strong>: 
-                <span className={`w-2.5 h-2.5 rounded-full inline-block ${
-                  selectedDeadline.severity === "High" 
-                    ? "bg-rose-500" 
-                    : selectedDeadline.severity === "Medium" 
-                    ? "bg-amber-500" 
-                    : "bg-emerald-500"
-                }`} />
-                {selectedDeadline.severity} priority
-              </p>
-            </div>
+            <form onSubmit={handleEditSave} className="flex flex-col gap-4">
+              <div className="flex flex-col">
+                <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wide mb-1.5">Task Title</label>
+                <input 
+                  type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)}
+                  className={`h-10 px-3 rounded-lg border text-xs focus:outline-none ${
+                    darkMode ? "bg-black/35 border-white/[0.08] text-white" : "bg-white border-slate-200 text-slate-800"
+                  }`}
+                />
+              </div>
 
-            {/* Modal Actions */}
-            <div className="flex gap-3">
-              <button 
-                onClick={handleSaveDeadline}
-                className="flex-1 h-11 text-sm font-bold text-white bg-[#3F51B5] hover:bg-[#303F9F] rounded-xl border-none shadow-sm transition-all duration-200 cursor-pointer"
-              >
-                Save Details
-              </button>
-              <button 
-                onClick={() => handleDeleteDeadline(selectedDeadline.id)}
-                className="h-11 px-4 text-sm font-bold text-rose-500 bg-rose-500/10 hover:bg-rose-500/20 rounded-xl border border-rose-500/20 transition-all duration-200 cursor-pointer"
-                title="Delete deadline"
-              >
-                Delete
-              </button>
-            </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col">
+                  <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wide mb-1.5">Priority</label>
+                  <select
+                    value={editPriority} onChange={(e) => setEditPriority(e.target.value as any)}
+                    className={`h-10 px-2 rounded-lg border text-xs ${
+                      darkMode ? "bg-black/35 border-white/[0.08] text-white" : "bg-white border-slate-200 text-slate-800"
+                    }`}
+                  >
+                    <option value="Normal">Normal</option><option value="Important">Important</option><option value="Critical">Critical</option>
+                  </select>
+                </div>
+
+                <div className="flex flex-col">
+                  <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wide mb-1.5">Category</label>
+                  <select
+                    value={editCategory} onChange={(e) => setEditCategory(e.target.value as any)}
+                    className={`h-10 px-2 rounded-lg border text-xs ${
+                      darkMode ? "bg-black/35 border-white/[0.08] text-white" : "bg-white border-slate-200 text-slate-800"
+                    }`}
+                  >
+                    <option value="Submission">Submission</option><option value="Exam">Exam</option><option value="Project">Project</option><option value="Meeting">Meeting</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-2">
+                <button type="button" onClick={() => setEditingDeadline(null)} className="flex-1 h-10 rounded-lg text-xs font-bold border border-slate-200 text-slate-500 bg-transparent cursor-pointer">Cancel</button>
+                <button type="submit" className="flex-1 h-10 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg border-none cursor-pointer">Save Changes</button>
+              </div>
+            </form>
           </div>
         </div>
       )}
 
-      {/* CHANGE PROFILE PICTURE MODAL */}
-      {showChangeProfileModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-[fade-in_0.2s_ease-out_forwards]">
-          <div 
-            className={`rounded-[24px] p-8 max-w-[380px] w-full border relative animate-[fade-in-up_0.3s_cubic-bezier(0.16,1,0.3,1)_forwards] flex flex-col items-center ${
-              darkMode 
-                ? "bg-[#131224] border-white/[0.08] text-white shadow-[0_25px_50px_rgba(0,0,0,0.6)]" 
-                : "bg-white border-slate-100 text-slate-800 shadow-[0_25px_50px_rgba(0,0,0,0.15)]"
-            }`}
-          >
-            {/* Modal Header */}
-            <div className="w-full flex justify-between items-center mb-6">
-              <h4 className="text-lg font-bold font-sans">Change Profile Picture</h4>
-              <button 
-                onClick={() => {
-                  setShowChangeProfileModal(false);
-                  setTempAvatarUrl(null);
-                }}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 cursor-pointer bg-transparent border-none"
-                aria-label="Close modal"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
-            </div>
-
-            {/* Modal Body: Avatar Preview */}
-            <div className="w-20 h-20 rounded-full bg-[#E2E8F0] dark:bg-slate-700 flex items-center justify-center font-bold text-[32px] text-slate-800 dark:text-slate-100 shadow-md border overflow-hidden mb-6 relative">
-              {tempAvatarUrl ? (
-                <img src={tempAvatarUrl} alt="Avatar Preview" className="w-full h-full object-cover" />
-              ) : (
-                "S"
-              )}
-            </div>
-
-            {/* Actions / Buttons */}
-            <div className="flex flex-col gap-3 w-full items-center mb-8">
-              <label 
-                htmlFor="avatar-file-upload" 
-                className="w-full h-11 text-sm font-bold text-white bg-[#3F51B5] hover:bg-[#303F9F] rounded-xl cursor-pointer shadow-sm transition-all duration-200 flex items-center justify-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 9 9m-9-9v12" />
-                </svg>
-                Upload New Picture
-              </label>
-              <input 
-                id="avatar-file-upload" 
-                type="file" 
-                accept="image/png, image/jpeg" 
-                className="hidden" 
-                onChange={handleFileChange} 
-              />
-
-              {tempAvatarUrl && (
-                <button
-                  type="button"
-                  onClick={() => setTempAvatarUrl(null)}
-                  className="w-full h-11 text-sm font-bold text-rose-500 bg-rose-500/10 hover:bg-rose-500/20 rounded-xl border border-rose-500/20 transition-all duration-200 cursor-pointer"
-                >
-                  Remove Picture
-                </button>
-              )}
-
-              <span className="text-[11px] text-slate-400 dark:text-slate-500 text-center mt-1">
-                Supports JPG, PNG (Max 2MB)
-              </span>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="flex gap-3 w-full">
-              <button 
-                onClick={() => {
-                  setShowChangeProfileModal(false);
-                  setTempAvatarUrl(null);
-                }}
-                className={`flex-1 h-11 text-sm font-bold rounded-xl transition-all duration-200 cursor-pointer border ${
-                  darkMode
-                    ? "bg-transparent border-white/[0.1] text-slate-300 hover:bg-white/[0.05]"
-                    : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
-                }`}
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={() => {
-                  setAvatarUrl(tempAvatarUrl);
-                  if (tempAvatarUrl) {
-                    localStorage.setItem("syncspace_avatar", tempAvatarUrl);
-                  } else {
-                    localStorage.removeItem("syncspace_avatar");
-                  }
-                  setShowChangeProfileModal(false);
-                  alert("Profile picture updated! 👤");
-                }}
-                className="flex-1 h-11 text-sm font-bold text-white bg-[#3F51B5] hover:bg-[#303F9F] rounded-xl border-none shadow-sm transition-all duration-200 cursor-pointer"
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-    </main>
+    </div>
   );
 }

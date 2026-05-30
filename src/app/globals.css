@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 :root {
@@ -11,10 +11,72 @@
 }
 
 body {
-  background-color: var(--background);
-  color: var(--foreground);
   font-family: 'Inter', sans-serif;
   min-height: 100vh;
+  margin: 0;
+  overflow-x: hidden;
+}
+
+/* Custom modern thin scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.2);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.4);
+}
+
+/* 1. KEYFRAME ANIMATIONS */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+/* 2. UTILITY CLASSES */
+.animate-fade-in {
+  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 /* Premium Left-to-Right Shine/Glide Effect */
@@ -33,7 +95,7 @@ body {
   background: linear-gradient(
     90deg,
     rgba(255, 255, 255, 0) 0%,
-    rgba(255, 255, 255, 0.25) 50%,
+    rgba(255, 255, 255, 0.2) 50%,
     rgba(255, 255, 255, 0) 100%
   );
   transform: skewX(-20deg);
@@ -44,3 +106,104 @@ body {
   left: 150%;
   transition: left 0.75s ease-in-out;
 }
+
+/* Custom background animations for high fidelity dashboard */
+.glass-glow {
+  position: relative;
+}
+
+.glass-glow::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(to bottom right, rgba(255,255,255,0.1), rgba(255,255,255,0.02));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* 3. JUDGE SURPRISE ANIMATIONS */
+@keyframes sonar-pulse {
+  0% {
+    transform: scale(0.65);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+.sonar-ring {
+  animation: sonar-pulse 1.8s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+@keyframes breathe {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(99, 102, 241, 0.05);
+    transform: translateY(0);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(99, 102, 241, 0.2);
+    transform: translateY(-2px);
+  }
+}
+
+.breathe-card {
+  animation: breathe 4s ease-in-out infinite;
+}
+
+@keyframes stagger-in {
+  from {
+    opacity: 0;
+    transform: scale(0.85) translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.heatmap-stagger-1 { animation: stagger-in 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.heatmap-stagger-2 { animation: stagger-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.heatmap-stagger-3 { animation: stagger-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.heatmap-stagger-4 { animation: stagger-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.heatmap-stagger-5 { animation: stagger-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.heatmap-stagger-6 { animation: stagger-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.heatmap-stagger-7 { animation: stagger-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+@keyframes radar-scan {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.radar-beam {
+  animation: radar-scan 5s linear infinite;
+}
+
+@keyframes slow-float {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-10px) scale(1.06);
+  }
+}
+
+.float-glow-1 {
+  animation: slow-float 8s ease-in-out infinite;
+}
+
+.float-glow-2 {
+  animation: slow-float 6s ease-in-out infinite;
+}
+
+
+
