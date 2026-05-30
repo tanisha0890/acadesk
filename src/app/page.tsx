@@ -105,6 +105,7 @@ export interface ChatMessage {
   sender: "user" | "ai";
   text: string;
   timestamp: string;
+  id?: string;
 }
 
 export interface WorkBreakdownStep {
@@ -880,26 +881,133 @@ export default function Home() {
     return { steps, confidence };
   };
 
-  // AI Chat responses
-  const askAI = (query: string) => {
+  // AI Chat responses (Gemini 2.5 Powered Automation Agent)
+  const askAI = async (query: string) => {
+    // 1. Add user message to state
     const newChat = [...chatHistory, { sender: "user" as const, text: query, timestamp: new Date().toLocaleTimeString() }];
     setChatHistory(newChat);
 
-    setTimeout(() => {
+    // 2. Add a loading "typing" bubble for AI
+    const loadingMessageId = `ai-loading-${Date.now()}`;
+    const withLoading = [...newChat, { sender: "ai" as const, text: "Thinking and organizing...", timestamp: new Date().toLocaleTimeString(), id: loadingMessageId }];
+    setChatHistory(withLoading);
+
+    try {
+      const apiKey = "AIzaSyCKF6Jl4HQqopRQZC9-S7oQ7A2RVRvNA2M";
+      const systemPrompt = `You are the SyncSpace AI Academic Assistant. Your job is to help the student manage their timetable, deadlines, exams, and team coordination.
+You have the power to automate scheduling. If the user wants to schedule or add an exam, quiz, test, project, assignment, submission, or meeting, you MUST respond with a JSON object.
+
+Current date is Sunday, May 31, 2026. Use this as the anchor for relative dates (e.g. "Friday" is 2026-06-05, "tomorrow" is 2026-06-01, "next Monday" is 2026-06-08).
+Course Codes to map:
+- Linear Algebra, Maths, Algebra -> MA201
+- Web Development, Web Dev, Databases -> CS302
+- Algorithms, Software Engineering, SE -> CS301
+- Any other topic -> GEN101
+
+Categories: "Exam", "Submission", "Project", "Meeting"
+Priorities: "Critical" (for exams), "Important" (for projects/submissions), "Normal" (for others)
+
+JSON RESPONSE FORMAT:
+If scheduling a task:
+{
+  "action": "schedule",
+  "event": {
+    "courseCode": "MA201",
+    "title": "Maths Exam",
+    "date": "2026-06-05",
+    "time": "04:00 PM",
+    "priority": "Critical",
+    "category": "Exam"
+  },
+  "chatResponse": "🗓️ I have automatically scheduled your Maths Exam on Friday, June 5th at 4:00 PM!"
+}
+
+If just chatting or answering a question:
+{
+  "action": "chat",
+  "chatResponse": "Your helpful response text here..."
+}
+
+CRITICAL: Return ONLY the JSON object. Do not include markdown block formatting, do not include \`\`\`json. Return a raw JSON string.`;
+
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: "user",
+              parts: [
+                { text: systemPrompt },
+                { text: `User request: ${query}` }
+              ]
+            }
+          ],
+          generationConfig: {
+            responseMimeType: "application/json"
+          }
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to contact Gemini API");
+      }
+
+      const data = await response.json();
+      const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+      const parsed = JSON.parse(rawText.trim());
+
       let answer = "";
+      if (parsed.action === "schedule" && parsed.event) {
+        // Automatically schedule the event!
+        addDeadline({
+          courseCode: parsed.event.courseCode || "GEN101",
+          title: parsed.event.title || "Academic Event",
+          date: parsed.event.date || "2026-06-02",
+          time: parsed.event.time || "04:00 PM",
+          priority: parsed.event.priority || "Normal",
+          category: parsed.event.category || "Submission"
+        });
+
+        // Scan for collisions
+        const newDl = { id: "temp", ...parsed.event, completed: false };
+        const currentDeadlines = [...deadlines, newDl];
+        const activeCollisions = findCollisions(currentDeadlines);
+        const hasCollisionOnThisDate = activeCollisions.some(c => c.date === parsed.event.date);
+
+        let collisionWarning = "";
+        if (hasCollisionOnThisDate) {
+          const collisionTasks = currentDeadlines.filter(d => d.date === parsed.event.date);
+          collisionWarning = `\n\n⚠️ **Deadline Collision Alert**: I detected that you now have **${collisionTasks.length} tasks** scheduled on **${parsed.event.date}**. This increases your local stress index. I highly recommend allocating **Focus Study Blocks** on the preceding days to balance your capacity.`;
+        }
+
+        answer = `${parsed.chatResponse}${collisionWarning}\n\n*Timetable updated in real-time. Workload forecast graphs recalculated.*`;
+      } else {
+        answer = parsed.chatResponse || "I've analyzed your academic timetable. Your overall stress index is Medium. Your workload heatmap shows a slight spike on Tuesday and Wednesday. I suggest finishing the Database design by Monday evening to keep your schedule fully balanced.";
+      }
+
+      // Remove "typing..." and add actual answer
+      setChatHistory(prev => {
+        const filtered = prev.filter(m => m.id !== loadingMessageId);
+        const updated = [...filtered, { sender: "ai" as const, text: answer, timestamp: new Date().toLocaleTimeString() }];
+        saveState("syncspace_chat", updated);
+        return updated;
+      });
+
+    } catch (error) {
+      console.error("Gemini API Error:", error);
+      // Failsafe fallback parser if API key is invalid or request fails
       const lower = query.toLowerCase();
-
-      const incomplete = deadlines.filter(d => !d.completed);
-      const critical = incomplete.filter(d => d.priority === "Critical");
-      const collisions = findCollisions(deadlines);
-
-      // Natural Language Parsing for Automating Deadlines / Exam scheduling
-      const scheduleKeywords = ["exam", "test", "quiz", "project", "submission", "homework", "assignment", "meeting", "deadline", "schedule", "add"];
+      let answer = "I'm having trouble connecting to my Gemini AI core right now. I have safely scheduled your request using my local offline parser.";
+      
+      const scheduleKeywords = ["exam", "test", "quiz", "project", "submission", "homework", "assignment", "meeting"];
       const hasScheduleAction = scheduleKeywords.some(keyword => lower.includes(keyword)) && 
                                 (lower.includes("on") || lower.includes("at") || lower.includes("tomorrow") || lower.includes("today"));
 
       if (hasScheduleAction) {
-        // 1. Determine Subject & Course Code
+        // Fallback local scheduling logic
         let courseCode = "GEN101";
         let subjectName = "General Study";
         if (lower.includes("math") || lower.includes("algebra") || lower.includes("linear")) {
@@ -912,8 +1020,7 @@ export default function Home() {
           courseCode = "CS301";
           subjectName = "Algorithms";
         }
-
-        // 2. Determine Category & Priority
+        
         let category: "Exam" | "Submission" | "Project" | "Meeting" = "Submission";
         let priority: "Critical" | "Important" | "Normal" = "Normal";
         let eventName = "Assignment";
@@ -940,8 +1047,7 @@ export default function Home() {
           eventName = "Assignment";
         }
 
-        // 3. Determine Date (Relative to Sunday May 31, 2026)
-        let dateVal = "2026-06-02"; // default: Tuesday
+        let dateVal = "2026-06-02";
         let dateStringLabel = "Tuesday, June 2, 2026";
         
         if (lower.includes("today")) {
@@ -973,8 +1079,7 @@ export default function Home() {
           dateStringLabel = "Sunday, June 7, 2026";
         }
 
-        // 4. Determine Time (Regex search e.g. 4pm, 10:30 am, etc.)
-        let timeVal = "04:00 PM"; // default
+        let timeVal = "04:00 PM";
         const timeRegex = /(\d{1,2})(?::(\d{2}))?\s*(am|pm)/i;
         const timeMatch = query.match(timeRegex);
         if (timeMatch) {
@@ -983,11 +1088,9 @@ export default function Home() {
           const ampm = timeMatch[3].toUpperCase();
           timeVal = `${String(hour).padStart(2, "0")}:${min} ${ampm}`;
         }
-
-        // 5. Construct Title
+        
         const titleVal = `${subjectName} ${eventName}`;
 
-        // 6. Invoke addDeadline
         addDeadline({
           courseCode,
           title: titleVal,
@@ -997,53 +1100,18 @@ export default function Home() {
           category
         });
 
-        // 7. Check for collisions
-        const currentDeadlines = [...deadlines, { id: "temp", courseCode, title: titleVal, date: dateVal, time: timeVal, priority, category, completed: false }];
-        const activeCollisions = findCollisions(currentDeadlines);
-        const hasCollisionOnThisDate = activeCollisions.some(c => c.date === dateVal);
-
-        let collisionWarning = "";
-        if (hasCollisionOnThisDate) {
-          const collisionTasks = currentDeadlines.filter(d => d.date === dateVal);
-          collisionWarning = `\n\n⚠️ **Deadline Collision Alert**: I detected that you now have **${collisionTasks.length} tasks** scheduled on **${dateStringLabel}** (including this new one). This increases your local stress index. I highly recommend allocating **Focus Study Blocks** on the preceding days to balance your capacity.`;
-        }
-
-        answer = `🗓️ **AI Scheduling Agent Activated**\n\nI have automatically parsed your prompt and scheduled the event on your timetable:\n\n* **Event Title**: ${titleVal}\n* **Course Code**: ${courseCode}\n* **Date**: ${dateStringLabel}\n* **Time**: ${timeVal}\n* **Category**: ${category}\n* **Priority Level**: ${priority}${collisionWarning}\n\n*Timetable updated in real-time. Workload forecast graphs recalculated.*`;
-      } else if (lower.includes("complete today") || lower.includes("should i do") || lower.includes("prioritize")) {
-        if (critical.length > 0) {
-          answer = `Based on your high workload and deadlines, you should prioritize completing **${critical[0].title}** for ${critical[0].courseCode} which is due on ${critical[0].date}. It is flagged as a Critical task.`;
-        } else if (incomplete.length > 0) {
-          answer = `Your most pressing deadline is **${incomplete[0].title}** (${incomplete[0].courseCode}) due on ${incomplete[0].date}. I suggest tackling this task first.`;
-        } else {
-          answer = "You have completed all pending deadlines. Great job! Enjoy your free time or prepare ahead for future focus blocks.";
-        }
-      } else if (lower.includes("collision") || lower.includes("stress")) {
-        if (collisions.length > 0) {
-          const firstCol = collisions[0];
-          answer = `Yes, you have a deadline collision on **${firstCol.date}** with ${firstCol.count} tasks: ${firstCol.tasks.map(t => t.title).join(", ")}. I recommend using the **Smart Plan** feature on ${firstCol.tasks[0].title} to distribute your workload before ${firstCol.date}.`;
-        } else {
-          answer = "Good news! You have no schedule collisions this week. Your stress level is Low to Moderate.";
-        }
-      } else if (lower.includes("team") || lower.includes("rahul") || lower.includes("member")) {
-        const leastBusy = teamMembers.reduce((min, cur) => cur.tasksCount < min.tasksCount ? cur : min, teamMembers[0]);
-        answer = `Regarding your team projects: **${leastBusy.name}** currently has the lowest workload with only ${leastBusy.tasksCount} active tasks. Consider delegating upcoming presentation or testing tasks to them to balance team capacity.`;
-      } else if (lower.includes("free") || lower.includes("focus") || lower.includes("study")) {
-        answer = "I've analyzed your upcoming week. Your optimal Focus Blocks are **Saturday 10:00 AM – 1:00 PM** and **Sunday 3:00 PM – 6:00 PM**. Using these slots for Advanced Algorithms prep will reduce your mid-week stress index by 15%.";
-      } else if (lower.includes("finish") || lower.includes("before friday")) {
-        const countBeforeFriday = incomplete.filter(d => new Date(d.date).getDay() < 5).length;
-        if (countBeforeFriday > 4) {
-          answer = "With 5 deadlines scheduled before Friday, it will be extremely tight. I advise rescheduling or delegating team submissions to avoid a high-stress index collision.";
-        } else {
-          answer = "Yes! You have a highly balanced schedule leading up to Friday. Completing 1.5 hours of focus study daily will get all submissions finalized easily.";
-        }
+        answer = `🗓️ **Offline Scheduler Active**\n\nI have automatically scheduled your **${titleVal}** for **${courseCode}** on **${dateStringLabel} at ${timeVal}** (Offline Fallback).`;
       } else {
-        answer = "I've analyzed your academic timetable. Your overall stress index is Medium. Your workload heatmap shows a slight spike on Tuesday and Wednesday. I suggest finishing the Database design by Monday evening to keep your schedule fully balanced.";
+        answer = "I've analyzed your academic timetable locally. Your overall stress index is Medium. Your workload heatmap shows a slight spike on Tuesday and Wednesday. I suggest finishing the Database design by Monday evening to keep your schedule fully balanced.";
       }
 
-      const updatedChat = [...newChat, { sender: "ai" as const, text: answer, timestamp: new Date().toLocaleTimeString() }];
-      setChatHistory(updatedChat);
-      saveState("syncspace_chat", updatedChat);
-    }, 600);
+      setChatHistory(prev => {
+        const filtered = prev.filter(m => m.id !== loadingMessageId);
+        const updated = [...filtered, { sender: "ai" as const, text: answer, timestamp: new Date().toLocaleTimeString() }];
+        saveState("syncspace_chat", updated);
+        return updated;
+      });
+    }
   };
 
 
