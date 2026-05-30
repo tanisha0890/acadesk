@@ -36,7 +36,9 @@ import {
   Key,
   Eye,
   EyeOff,
-  User
+  User,
+  Mic,
+  MicOff
 } from "lucide-react";
 
 // Custom hook for Scroll Reveals
@@ -188,6 +190,54 @@ export default function Home() {
   const [loggedInEmail, setLoggedInEmail] = useState<string>("surajchoudhary5002@gmail.com");
   const [productivityScore, setProductivityScore] = useState<number>(94);
 
+  // Voice to Text states & hooks
+  const [isListening, setIsListening] = useState(false);
+  const [recognitionInstance, setRecognitionInstance] = useState<any>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        const recognition = new SpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.lang = "en-US";
+
+        recognition.onstart = () => {
+          setIsListening(true);
+        };
+
+        recognition.onresult = (event: any) => {
+          const transcript = event.results[0][0].transcript;
+          setAssistantInput(prev => prev + (prev ? " " : "") + transcript);
+        };
+
+        recognition.onerror = (event: any) => {
+          console.error("Speech recognition error:", event.error);
+          setIsListening(false);
+        };
+
+        recognition.onend = () => {
+          setIsListening(false);
+        };
+
+        setRecognitionInstance(recognition);
+      }
+    }
+  }, []);
+
+  const toggleListening = () => {
+    if (!recognitionInstance) {
+      alert("Web Speech API is not supported in this browser. Please use Google Chrome or Safari.");
+      return;
+    }
+    if (isListening) {
+      recognitionInstance.stop();
+    } else {
+      setIsListening(true);
+      recognitionInstance.start();
+    }
+  };
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mouseOffset, setMouseOffset] = useState({ x: 0, y: 0 });
@@ -2709,8 +2759,28 @@ export default function Home() {
                       <div ref={chatEndRef} />
                     </div>
 
-                    <form onSubmit={(e)=>{ e.preventDefault(); if(!assistantInput.trim())return; askAI(assistantInput); setAssistantInput(""); }} className="p-4 border-t dark:border-white/[0.04] border-slate-100 flex gap-2">
-                      <input type="text" value={assistantInput} onChange={(e)=>setAssistantInput(e.target.value)} placeholder="Ask about timetable collisions, stress score, focus blocks..." className="flex-1 h-12 px-4 rounded-xl border text-xs focus:outline-none dark:bg-black/35 dark:border-white/[0.08]" />
+                    <form onSubmit={(e)=>{ e.preventDefault(); if(!assistantInput.trim())return; askAI(assistantInput); setAssistantInput(""); }} className="p-4 border-t dark:border-white/[0.04] border-slate-100 flex gap-2 items-center">
+                      <div className="relative flex-1">
+                        <input 
+                          type="text" 
+                          value={assistantInput} 
+                          onChange={(e)=>setAssistantInput(e.target.value)} 
+                          placeholder="Ask about timetable collisions, stress score, focus blocks..." 
+                          className="w-full h-12 pl-4 pr-12 rounded-xl border text-xs focus:outline-none dark:bg-black/35 dark:border-white/[0.08] dark:text-white" 
+                        />
+                        <button
+                          type="button"
+                          onClick={toggleListening}
+                          className={`absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg flex items-center justify-center border-none cursor-pointer transition-all ${
+                            isListening 
+                              ? "bg-rose-500/20 text-rose-500 animate-pulse border border-rose-500/35" 
+                              : "bg-transparent text-slate-400 hover:text-slate-200"
+                          }`}
+                          title="Click to dictate (Voice to Text)"
+                        >
+                          {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                        </button>
+                      </div>
                       <button type="submit" className="w-12 h-12 rounded-xl text-white bg-indigo-600 flex items-center justify-center border-none cursor-pointer"><Send className="w-4 h-4" /></button>
                     </form>
                   </div>
