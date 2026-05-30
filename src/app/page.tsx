@@ -215,6 +215,13 @@ export default function Home() {
         recognition.onerror = (event: any) => {
           console.error("Speech recognition error:", event.error);
           setIsListening(false);
+          if (event.error === "not-allowed") {
+            alert("🎤 Microphone access is blocked. Please click the lock or camera/microphone icon in your browser address bar and select 'Allow' to grant microphone access to Acadesk.");
+          } else if (event.error === "no-speech") {
+            console.warn("No speech was detected.");
+          } else if (event.error === "network") {
+            alert("⚠️ Network error occurred during speech recognition. Please check your internet connection.");
+          }
         };
 
         recognition.onend = () => {
@@ -231,11 +238,16 @@ export default function Home() {
       alert("Web Speech API is not supported in this browser. Please use Google Chrome or Safari.");
       return;
     }
-    if (isListening) {
-      recognitionInstance.stop();
-    } else {
-      setIsListening(true);
-      recognitionInstance.start();
+    try {
+      if (isListening) {
+        recognitionInstance.stop();
+      } else {
+        setIsListening(true);
+        recognitionInstance.start();
+      }
+    } catch (err) {
+      console.error("Speech recognition start error:", err);
+      setIsListening(false);
     }
   };
 
