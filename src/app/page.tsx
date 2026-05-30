@@ -893,7 +893,123 @@ export default function Home() {
       const critical = incomplete.filter(d => d.priority === "Critical");
       const collisions = findCollisions(deadlines);
 
-      if (lower.includes("complete today") || lower.includes("should i do") || lower.includes("prioritize")) {
+      // Natural Language Parsing for Automating Deadlines / Exam scheduling
+      const scheduleKeywords = ["exam", "test", "quiz", "project", "submission", "homework", "assignment", "meeting", "deadline", "schedule", "add"];
+      const hasScheduleAction = scheduleKeywords.some(keyword => lower.includes(keyword)) && 
+                                (lower.includes("on") || lower.includes("at") || lower.includes("tomorrow") || lower.includes("today"));
+
+      if (hasScheduleAction) {
+        // 1. Determine Subject & Course Code
+        let courseCode = "GEN101";
+        let subjectName = "General Study";
+        if (lower.includes("math") || lower.includes("algebra") || lower.includes("linear")) {
+          courseCode = "MA201";
+          subjectName = "Maths";
+        } else if (lower.includes("web") || lower.includes("dev") || lower.includes("database") || lower.includes("db")) {
+          courseCode = "CS302";
+          subjectName = "Web Dev";
+        } else if (lower.includes("alg") || lower.includes("se") || lower.includes("software") || lower.includes("algorithm")) {
+          courseCode = "CS301";
+          subjectName = "Algorithms";
+        }
+
+        // 2. Determine Category & Priority
+        let category: "Exam" | "Submission" | "Project" | "Meeting" = "Submission";
+        let priority: "Critical" | "Important" | "Normal" = "Normal";
+        let eventName = "Assignment";
+
+        if (lower.includes("exam") || lower.includes("midterm") || lower.includes("final")) {
+          category = "Exam";
+          priority = "Critical";
+          eventName = "Exam";
+        } else if (lower.includes("quiz") || lower.includes("test")) {
+          category = "Exam";
+          priority = "Important";
+          eventName = "Quiz";
+        } else if (lower.includes("project")) {
+          category = "Project";
+          priority = "Important";
+          eventName = "Project Submission";
+        } else if (lower.includes("meeting") || lower.includes("sync") || lower.includes("discuss")) {
+          category = "Meeting";
+          priority = "Normal";
+          eventName = "Discussion Meeting";
+        } else if (lower.includes("homework") || lower.includes("assignment") || lower.includes("lab")) {
+          category = "Submission";
+          priority = "Important";
+          eventName = "Assignment";
+        }
+
+        // 3. Determine Date (Relative to Sunday May 31, 2026)
+        let dateVal = "2026-06-02"; // default: Tuesday
+        let dateStringLabel = "Tuesday, June 2, 2026";
+        
+        if (lower.includes("today")) {
+          dateVal = "2026-05-31";
+          dateStringLabel = "Today, May 31, 2026";
+        } else if (lower.includes("tomorrow")) {
+          dateVal = "2026-06-01";
+          dateStringLabel = "Tomorrow, June 1, 2026";
+        } else if (lower.includes("monday")) {
+          dateVal = "2026-06-01";
+          dateStringLabel = "Monday, June 1, 2026";
+        } else if (lower.includes("tuesday")) {
+          dateVal = "2026-06-02";
+          dateStringLabel = "Tuesday, June 2, 2026";
+        } else if (lower.includes("wednesday")) {
+          dateVal = "2026-06-03";
+          dateStringLabel = "Wednesday, June 3, 2026";
+        } else if (lower.includes("thursday")) {
+          dateVal = "2026-06-04";
+          dateStringLabel = "Thursday, June 4, 2026";
+        } else if (lower.includes("friday")) {
+          dateVal = "2026-06-05";
+          dateStringLabel = "Friday, June 5, 2026";
+        } else if (lower.includes("saturday")) {
+          dateVal = "2026-06-06";
+          dateStringLabel = "Saturday, June 6, 2026";
+        } else if (lower.includes("sunday")) {
+          dateVal = "2026-06-07";
+          dateStringLabel = "Sunday, June 7, 2026";
+        }
+
+        // 4. Determine Time (Regex search e.g. 4pm, 10:30 am, etc.)
+        let timeVal = "04:00 PM"; // default
+        const timeRegex = /(\d{1,2})(?::(\d{2}))?\s*(am|pm)/i;
+        const timeMatch = query.match(timeRegex);
+        if (timeMatch) {
+          const hour = parseInt(timeMatch[1]);
+          const min = timeMatch[2] || "00";
+          const ampm = timeMatch[3].toUpperCase();
+          timeVal = `${String(hour).padStart(2, "0")}:${min} ${ampm}`;
+        }
+
+        // 5. Construct Title
+        const titleVal = `${subjectName} ${eventName}`;
+
+        // 6. Invoke addDeadline
+        addDeadline({
+          courseCode,
+          title: titleVal,
+          date: dateVal,
+          time: timeVal,
+          priority,
+          category
+        });
+
+        // 7. Check for collisions
+        const currentDeadlines = [...deadlines, { id: "temp", courseCode, title: titleVal, date: dateVal, time: timeVal, priority, category, completed: false }];
+        const activeCollisions = findCollisions(currentDeadlines);
+        const hasCollisionOnThisDate = activeCollisions.some(c => c.date === dateVal);
+
+        let collisionWarning = "";
+        if (hasCollisionOnThisDate) {
+          const collisionTasks = currentDeadlines.filter(d => d.date === dateVal);
+          collisionWarning = `\n\n⚠️ **Deadline Collision Alert**: I detected that you now have **${collisionTasks.length} tasks** scheduled on **${dateStringLabel}** (including this new one). This increases your local stress index. I highly recommend allocating **Focus Study Blocks** on the preceding days to balance your capacity.`;
+        }
+
+        answer = `🗓️ **AI Scheduling Agent Activated**\n\nI have automatically parsed your prompt and scheduled the event on your timetable:\n\n* **Event Title**: ${titleVal}\n* **Course Code**: ${courseCode}\n* **Date**: ${dateStringLabel}\n* **Time**: ${timeVal}\n* **Category**: ${category}\n* **Priority Level**: ${priority}${collisionWarning}\n\n*Timetable updated in real-time. Workload forecast graphs recalculated.*`;
+      } else if (lower.includes("complete today") || lower.includes("should i do") || lower.includes("prioritize")) {
         if (critical.length > 0) {
           answer = `Based on your high workload and deadlines, you should prioritize completing **${critical[0].title}** for ${critical[0].courseCode} which is due on ${critical[0].date}. It is flagged as a Critical task.`;
         } else if (incomplete.length > 0) {
