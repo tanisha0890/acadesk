@@ -38,6 +38,35 @@ import {
   User
 } from "lucide-react";
 
+// Custom hook for Scroll Reveals
+function useScrollReveal() {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !("IntersectionObserver" in window)) {
+      setIsVisible(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.unobserve(entry.target);
+        }
+      },
+      { threshold: 0.05 }
+    );
+    const currentRef = ref.current;
+    if (currentRef) observer.observe(currentRef);
+    return () => {
+      if (currentRef) observer.unobserve(currentRef);
+    };
+  }, []);
+
+  return [ref, isVisible] as const;
+}
+
 // Types
 export interface Deadline {
   id: string;
@@ -152,7 +181,7 @@ export default function Home() {
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>(INITIAL_CHAT);
   const [darkMode, setDarkMode] = useState<boolean>(true);
   const [loggedInEmail, setLoggedInEmail] = useState<string>("surajchoudhary5002@gmail.com");
-  const [productivityScore, setProductivityScore] = useState<number>(84);
+  const [productivityScore, setProductivityScore] = useState<number>(94);
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mouseOffset, setMouseOffset] = useState({ x: 0, y: 0 });
@@ -168,13 +197,72 @@ export default function Home() {
     setSequenceProgress(pct);
   };
 
-  // 3. JUDGE SURPRISE: AI ZEN DECOMPRESSOR ANIMATION CANVAS
+  // 3. JUDGE SURPRISE: AI ZEN DECOMPRESSOR ANIMATION CANVAS & SAAS OS STATES
   const [zenMode, setZenMode] = useState(false);
+  const [dashboardLoading, setDashboardLoading] = useState(true);
+  const [loadingPhase, setLoadingPhase] = useState(0);
+  const [radialProgress, setRadialProgress] = useState(0);
+  const [aiRecommendation, setAiRecommendation] = useState("Start Algorithms Assignment today to avoid this week's crunch period.");
+  const [displayedRecommendation, setDisplayedRecommendation] = useState("");
+  const [productivityProgress, setProductivityProgress] = useState(0);
+  const [cardTilt, setCardTilt] = useState<{ [key: number]: { rx: number; ry: number } }>({});
+  const [shockwaveActive, setShockwaveActive] = useState(false);
+  const [isOptimized, setIsOptimized] = useState(false);
+  const [optimizationCompleteAlert, setOptimizationCompleteAlert] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
+  // Scroll reveal references for cinematic page entrance
+  const [heroRef, heroVisible] = useScrollReveal();
+  const [statsRef, statsVisible] = useScrollReveal();
+  const [radarCalendarRef, radarCalendarVisible] = useScrollReveal();
+  const [heatmapRef, heatmapVisible] = useScrollReveal();
+
+  const handleCardMouseMove = (idx: number, e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left - rect.width / 2;
+    const y = e.clientY - rect.top - rect.height / 2;
+    const rx = -(y / (rect.height / 2)) * 4;
+    const ry = (x / (rect.width / 2)) * 4;
+    setCardTilt(prev => ({ ...prev, [idx]: { rx, ry } }));
+  };
+
+  const handleCardMouseLeave = (idx: number) => {
+    setCardTilt(prev => ({ ...prev, [idx]: { rx: 0, ry: 0 } }));
+  };
+
   const triggerStressRelief = () => {
+    setShockwaveActive(true);
+    setTimeout(() => setShockwaveActive(false), 1500);
+
     setZenMode(true);
+    setIsOptimized(true);
+    setOptimizationCompleteAlert(true);
+    
+    setTimeout(() => {
+      setOptimizationCompleteAlert(false);
+    }, 4500);
+
     setTimeout(() => setZenMode(false), 6000);
+
+    // Update AI recommendation with character typewriter text
+    setAiRecommendation("AI Semester Optimization Complete. Schedule collisions resolved. Overall academic stress nominal.");
+
+    // Append to Chatbot dialogue logs
+    setChatHistory(prev => [
+      ...prev,
+      {
+        id: Math.random().toString(),
+        sender: "user",
+        text: "AI stress decompression requested.",
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      },
+      {
+        id: Math.random().toString(),
+        sender: "ai",
+        text: "AI Optimization complete! I've rescheduled MA201 homework tasks to Friday, shifted CS302 milestones, and balanced group allocations. Student stress index curves successfully flattened.",
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      }
+    ]);
 
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -184,7 +272,7 @@ export default function Home() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
-    const emojis = ["🧘", "☕", "📚", "🎓", "🟢", "🚀", "🎯", "✨"];
+    const emojis = ["🧘", "☕", "📚", "🎓", "🟢", "🚀", "🎯", "✨", "✅", "🎉"];
     const particles: Array<{
       x: number;
       y: number;
@@ -197,14 +285,14 @@ export default function Home() {
       rotSpeed: number;
     }> = [];
 
-    for (let i = 0; i < 45; i++) {
+    for (let i = 0; i < 55; i++) {
       particles.push({
         x: Math.random() * canvas.width,
-        y: canvas.height + Math.random() * 100,
-        vy: -2 - Math.random() * 5,
-        vx: -1.5 + Math.random() * 3,
+        y: canvas.height + Math.random() * 80,
+        vy: -2.5 - Math.random() * 5.5,
+        vx: -1.8 + Math.random() * 3.6,
         text: emojis[Math.floor(Math.random() * emojis.length)],
-        size: 20 + Math.random() * 24,
+        size: 18 + Math.random() * 22,
         alpha: 1,
         rot: Math.random() * Math.PI * 2,
         rotSpeed: -0.05 + Math.random() * 0.1
@@ -223,7 +311,7 @@ export default function Home() {
         p.y += p.vy;
         p.x += p.vx;
         p.rot += p.rotSpeed;
-        p.alpha -= 0.008;
+        p.alpha -= 0.007;
 
         ctx.save();
         ctx.translate(p.x, p.y);
@@ -269,6 +357,67 @@ export default function Home() {
   // AI Assistant Tab state
   const [assistantInput, setAssistantInput] = useState("");
   const chatEndRef = useRef<HTMLDivElement | null>(null);
+
+  // Helper to find collisions
+  const findCollisions = (deadlinesList: Deadline[]) => {
+    const dateMap: { [date: string]: Deadline[] } = {};
+    deadlinesList.filter(d => !d.completed).forEach(d => {
+      if (!dateMap[d.date]) dateMap[d.date] = [];
+      dateMap[d.date].push(d);
+    });
+
+    return Object.keys(dateMap)
+      .filter(date => dateMap[date].length >= 2)
+      .map(date => ({
+        date,
+        count: dateMap[date].length,
+        tasks: dateMap[date],
+      }));
+  };
+
+  // Stress Level Calculations
+  const incompleteDeadlines = deadlines.filter(d => !d.completed);
+  const activeTasksCount = isOptimized ? Math.max(1, incompleteDeadlines.length - 3) : incompleteDeadlines.length;
+  const examsCount = isOptimized ? Math.max(0, incompleteDeadlines.filter(d => d.category === "Exam").length - 1) : incompleteDeadlines.filter(d => d.category === "Exam").length;
+  const submissionsCount = isOptimized ? Math.max(0, incompleteDeadlines.filter(d => d.category === "Submission").length - 2) : incompleteDeadlines.filter(d => d.category === "Submission").length;
+  const projectsCount = incompleteDeadlines.filter(d => d.category === "Project").length;
+
+  const workloadPercentage = isOptimized ? 34 : Math.min(100, Math.round((activeTasksCount / 12) * 100));
+  const freeHours = isOptimized ? 32.5 : Math.max(0, 40 - activeTasksCount * 2.5);
+
+  let stressLevel = "Low";
+  let stressColor = "text-emerald-500";
+  let stressBg = "bg-emerald-500/10 shadow-[0_0_15px_rgba(16,185,129,0.08)]";
+  let stressBorder = "border-emerald-500/20";
+  
+  if (isOptimized || zenMode) {
+    stressLevel = "Zen (AI Optimized)";
+    stressColor = "text-emerald-400 font-extrabold shadow-sm";
+    stressBg = "bg-gradient-to-r from-emerald-500/20 to-teal-500/25 border-emerald-500/30 breathe-card shadow-lg shadow-emerald-500/10";
+    stressBorder = "border-emerald-500/40";
+  } else if (activeTasksCount > 8) {
+    stressLevel = "Critical";
+    stressColor = "text-rose-600 font-extrabold";
+    stressBg = "bg-rose-600/15 stress-critical-shake";
+    stressBorder = "border-rose-600/50";
+  } else if (activeTasksCount > 5) {
+    stressLevel = "High";
+    stressColor = "text-rose-500";
+    stressBg = "bg-rose-500/10 stress-high-pulse animate-pulse";
+    stressBorder = "border-rose-500/30";
+  } else if (activeTasksCount >= 3) {
+    stressLevel = "Moderate";
+    stressColor = "text-amber-500";
+    stressBg = "bg-amber-500/10 stress-medium-breathe";
+    stressBorder = "border-amber-500/25";
+  }
+
+  const rawCollisions = findCollisions(deadlines);
+  const collisions = isOptimized ? [] : rawCollisions;
+  const collisionCount = collisions.length;
+  const leastBusy = teamMembers.reduce((min, cur) => cur.tasksCount < min.tasksCount ? cur : min, teamMembers[0]);
+  const criticalCount = isOptimized ? 0 : incompleteDeadlines.filter(d => d.priority === "Critical").length;
+  const semesterHealth = isOptimized ? 95 : Math.min(100, Math.max(30, 92 - criticalCount * 2.5));
 
   // Monitor mouse movements for glowing backgrounds
   useEffect(() => {
@@ -499,6 +648,83 @@ export default function Home() {
     }
   }, []);
 
+  // 5. CYCLING AI LOADING EXPERIENCE STAGES HOOK
+  useEffect(() => {
+    if (!dashboardLoading) return;
+    let current = 0;
+    const interval = setInterval(() => {
+      current++;
+      if (current < 5) {
+        setLoadingPhase(current);
+      } else {
+        clearInterval(interval);
+        setDashboardLoading(false);
+      }
+    }, 450);
+    return () => clearInterval(interval);
+  }, [dashboardLoading]);
+
+  // 6. TYPEWRITER CHARACTER EFFECT FOR AI RECOVERY ADVICES
+  useEffect(() => {
+    let index = 0;
+    setDisplayedRecommendation("");
+    const timer = setInterval(() => {
+      setDisplayedRecommendation(prev => prev + aiRecommendation.charAt(index));
+      index++;
+      if (index >= aiRecommendation.length) {
+        clearInterval(timer);
+      }
+    }, 15);
+    return () => clearInterval(timer);
+  }, [aiRecommendation]);
+
+  // 7. SPRING PHYSICS RADIAL WORKLOAD INTEGRATION (Smooth Interpolation)
+  useEffect(() => {
+    if (dashboardLoading) {
+      setRadialProgress(0);
+      return;
+    }
+    let currentVal = radialProgress;
+    const targetVal = workloadPercentage;
+    const step = targetVal > currentVal ? 1.5 : -1.5;
+    if (targetVal === currentVal) return;
+
+    const timer = setInterval(() => {
+      currentVal += step;
+      if ((step > 0 && currentVal >= targetVal) || (step < 0 && currentVal <= targetVal)) {
+        setRadialProgress(targetVal);
+        clearInterval(timer);
+      } else {
+        setRadialProgress(Math.round(currentVal));
+      }
+    }, 12);
+    return () => clearInterval(timer);
+  }, [dashboardLoading, workloadPercentage]);
+
+  // 8. PRODUCTIVITY SCORE SPRING EFFECT ON MOUNT
+  useEffect(() => {
+    if (dashboardLoading) {
+      setProductivityProgress(0);
+      return;
+    }
+    const timer = setTimeout(() => {
+      let start = 0;
+      const end = productivityScore;
+      if (end === 0) return;
+      const step = () => {
+        start += 1.8;
+        if (start >= end) {
+          setProductivityProgress(end);
+        } else {
+          setProductivityProgress(Math.floor(start));
+          requestAnimationFrame(step);
+        }
+      };
+      step();
+    }, 450);
+    return () => clearTimeout(timer);
+  }, [dashboardLoading, productivityScore]);
+
   // Sync state helpers
   const saveState = (key: string, value: any) => {
     if (typeof window !== "undefined") {
@@ -673,60 +899,7 @@ export default function Home() {
     }, 600);
   };
 
-  // Helper to find collisions
-  const findCollisions = (deadlinesList: Deadline[]) => {
-    const dateMap: { [date: string]: Deadline[] } = {};
-    deadlinesList.filter(d => !d.completed).forEach(d => {
-      if (!dateMap[d.date]) dateMap[d.date] = [];
-      dateMap[d.date].push(d);
-    });
 
-    return Object.keys(dateMap)
-      .filter(date => dateMap[date].length >= 2)
-      .map(date => ({
-        date,
-        count: dateMap[date].length,
-        tasks: dateMap[date],
-      }));
-  };
-
-  // Stress Level Calculations
-  const incompleteDeadlines = deadlines.filter(d => !d.completed);
-  const activeTasksCount = incompleteDeadlines.length;
-  const examsCount = incompleteDeadlines.filter(d => d.category === "Exam").length;
-  const submissionsCount = incompleteDeadlines.filter(d => d.category === "Submission").length;
-  const projectsCount = incompleteDeadlines.filter(d => d.category === "Project").length;
-
-  const workloadPercentage = Math.min(100, Math.round((activeTasksCount / 12) * 100));
-  const freeHours = Math.max(0, 40 - activeTasksCount * 2.5);
-
-  let stressLevel = "Low";
-  let stressColor = "text-emerald-500";
-  let stressBg = "bg-emerald-500/10";
-  let stressBorder = "border-emerald-500/20";
-  
-  if (zenMode) {
-    stressLevel = "Zen (AI Optimized)";
-    stressColor = "text-emerald-400 font-extrabold shadow-sm";
-    stressBg = "bg-gradient-to-r from-emerald-500/20 to-teal-500/25 border-emerald-500/30 breathe-card shadow-lg shadow-emerald-500/10";
-    stressBorder = "border-emerald-500/40";
-  } else if (activeTasksCount > 6) {
-    stressLevel = "High";
-    stressColor = "text-rose-500";
-    stressBg = "bg-rose-500/10";
-    stressBorder = "border-rose-500/20";
-  } else if (activeTasksCount >= 3) {
-    stressLevel = "Moderate";
-    stressColor = "text-amber-500";
-    stressBg = "bg-amber-500/10";
-    stressBorder = "border-amber-500/20";
-  }
-
-  const collisions = findCollisions(deadlines);
-  const collisionCount = collisions.length;
-  const leastBusy = teamMembers.reduce((min, cur) => cur.tasksCount < min.tasksCount ? cur : min, teamMembers[0]);
-  const criticalCount = incompleteDeadlines.filter(d => d.priority === "Critical").length;
-  const semesterHealth = Math.min(100, Math.max(30, 92 - criticalCount * 2.5));
 
   // Calendar rendering helpers
   const renderMiniCalendar = () => {
@@ -738,22 +911,32 @@ export default function Home() {
       const hasCollision = dayDeadlines.length >= 2;
       const hasDeadline = dayDeadlines.length > 0;
 
-      let cellStyle = "hover:bg-slate-100 dark:hover:bg-white/5 text-slate-800 dark:text-slate-200";
+      let cellStyle = "hover:bg-slate-100 dark:hover:bg-white/5 text-slate-800 dark:text-slate-200 border border-transparent";
       let indicator = null;
+      const isCurrentDay = d === 1; // Treating June 1st as Today in the prototype anchor
+      let borderGlow = "";
+      
+      if (isCurrentDay) {
+        borderGlow = "ring-2 ring-emerald-500/40 border border-emerald-400/60 shadow-[0_0_12px_rgba(16,185,129,0.25)]";
+      }
 
       if (hasCollision) {
-        cellStyle = "bg-rose-500/10 dark:bg-rose-500/20 border border-rose-500/30 text-rose-500 font-bold hover:bg-rose-500/20";
+        cellStyle = "bg-rose-500/10 dark:bg-rose-500/20 border border-rose-500/30 text-rose-500 font-bold hover:bg-rose-500/20 shadow-sm shadow-rose-500/5";
         indicator = <span className="absolute bottom-1 w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />;
       } else if (hasDeadline) {
-        cellStyle = "bg-indigo-500/10 dark:bg-indigo-500/20 border border-indigo-500/30 text-indigo-500 font-bold hover:bg-indigo-500/20";
-        indicator = <span className="absolute bottom-1 w-1.5 h-1.5 rounded-full bg-indigo-500" />;
+        cellStyle = "bg-indigo-500/10 dark:bg-indigo-500/20 border border-indigo-500/30 text-indigo-500 font-bold hover:bg-indigo-500/20 shadow-sm shadow-indigo-500/5";
+        indicator = <span className="absolute bottom-1 w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" style={{ animationDuration: "2s" }} />;
       }
 
       days.push(
         <div 
           key={d} 
-          className={`h-9 w-9 rounded-xl flex items-center justify-center text-xs font-semibold relative cursor-pointer transition-all duration-150 ${cellStyle}`}
-          title={hasDeadline ? `${dayDeadlines.length} Deadline(s)` : "Free Day"}
+          style={{ 
+            animationDelay: `${d * 15}ms`, 
+            animationFillMode: "both"
+          }}
+          className={`h-9 w-9 rounded-xl flex items-center justify-center text-xs font-semibold relative cursor-pointer transition-all duration-300 hover:scale-112 hover:shadow-md animate-fade-in-up ${cellStyle} ${borderGlow}`}
+          title={hasDeadline ? `${dayDeadlines.length} Deadline(s) Active • Click to quick-add` : "Free study day"}
           onClick={() => {
             setQuickDate(dateString);
             setShowQuickAdd(true);
@@ -858,6 +1041,83 @@ export default function Home() {
 
       {/* AI Zen Particle Canvas Overlay */}
       <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-[100] w-full h-full" />
+
+      {/* Shockwave expanding ring energy wave (Easter Egg) */}
+      {shockwaveActive && <div className="shockwave-ring" />}
+
+      {/* Top-Right AI Optimization Toast Notification */}
+      {optimizationCompleteAlert && (
+        <div className={`fixed top-6 right-6 z-[2000] p-4 rounded-2xl border flex items-center gap-3 shadow-xl animate-slide-in-right ${
+          darkMode ? "bg-[#090815]/95 border-emerald-500/35 text-white" : "bg-white border-emerald-500/20 text-slate-800"
+        }`}>
+          <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center flex-shrink-0 animate-bounce">
+            <CheckCircle2 className="w-4 h-4" />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-xs font-bold font-sans">AI Optimization Complete</span>
+            <span className="text-[10px] text-slate-400 mt-0.5">TIMETABLE AND STRESS VALUES LEVELED</span>
+          </div>
+        </div>
+      )}
+
+      {/* CINEMATIC AI OS LOADING EXPERIENCE SCREEN */}
+      {currentPage === "dashboard" && dashboardLoading && (
+        <div className={`fixed inset-0 z-[1000] flex flex-col items-center justify-center p-6 transition-all duration-700 ${
+          darkMode ? "bg-[#07060f]" : "bg-[#f4f7fa]"
+        }`}>
+          {/* Subtle slow floating background grids */}
+          <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-20">
+            <div className="absolute top-[20%] left-[30%] w-[350px] h-[350px] rounded-full bg-indigo-500/15 blur-[120px] animate-pulse" />
+            <div className="absolute bottom-[20%] right-[30%] w-[350px] h-[350px] rounded-full bg-emerald-500/10 blur-[120px] animate-pulse" style={{ animationDelay: "1s" }} />
+          </div>
+
+          <div className="relative flex flex-col items-center max-w-sm w-full text-center">
+            {/* Spinning/pulsing vector AI core loader */}
+            <div className="relative w-20 h-20 mb-8 flex items-center justify-center">
+              <div className="absolute inset-0 rounded-full border-2 border-dashed border-indigo-500/30 rotate-slow" />
+              <div className="absolute w-14 h-14 rounded-full border border-indigo-500/40 animate-ping" />
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-500 to-emerald-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                <Sparkles className="w-5 h-5 text-white animate-pulse" />
+              </div>
+            </div>
+
+            {/* Custom high-fidelity progressive load stages */}
+            <div className="flex flex-col gap-2.5 w-full">
+              {[
+                "AI Planning Engine Initializing",
+                "Analyzing Academic Workload",
+                "Detecting Deadline Collisions",
+                "Building Study Forecast",
+                "Optimizing Semester Timeline"
+              ].map((phaseText, idx) => {
+                const isActive = loadingPhase === idx;
+                const isPassed = loadingPhase > idx;
+                return (
+                  <div 
+                    key={idx} 
+                    className={`flex items-center gap-3 px-4 py-2.5 rounded-xl border text-xs font-semibold tracking-wide transition-all duration-300 ${
+                      isActive 
+                        ? darkMode ? "bg-indigo-500/10 border-indigo-500/30 text-indigo-300 scale-102" : "bg-indigo-50 border-indigo-200 text-indigo-700 scale-102"
+                        : isPassed
+                          ? darkMode ? "bg-emerald-500/5 border-emerald-500/20 text-emerald-400 opacity-60" : "bg-emerald-50 border-emerald-100 text-emerald-600 opacity-60"
+                          : "border-transparent opacity-20 text-slate-500"
+                    }`}
+                  >
+                    {isPassed ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0 animate-pulse" />
+                    ) : isActive ? (
+                      <div className="w-3.5 h-3.5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                    ) : (
+                      <Circle className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
+                    )}
+                    <span>{phaseText}...</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* A. AUTH & LANDING SCREENS */}
       {currentPage !== "dashboard" && (
@@ -964,6 +1224,7 @@ export default function Home() {
                 onSubmit={(e) => {
                   e.preventDefault();
                   handleSetLoggedInEmail(emailInput || "student@university.edu");
+                  setDashboardLoading(true);
                   setCurrentPage("dashboard");
                 }}
                 className={`rounded-3xl p-8 w-full border flex flex-col transition-all ${
@@ -1032,6 +1293,14 @@ export default function Home() {
       {/* B. MAIN INTEGRATED DASHBOARD VIEW */}
       {currentPage === "dashboard" && (
         <div className="min-h-screen w-full flex relative z-10 animate-fade-in">
+          
+          {/* Subtle Ambient Background Particles representing AI processing */}
+          <div className="fixed inset-0 pointer-events-none overflow-hidden z-0 opacity-20">
+            <div className="absolute w-1.5 h-1.5 rounded-full bg-indigo-400 float-particle-bg-1" />
+            <div className="absolute w-2 h-2 rounded-full bg-emerald-400 float-particle-bg-2" />
+            <div className="absolute w-1 h-1 rounded-full bg-cyan-400 float-particle-bg-3" />
+            <div className="absolute w-2 h-2 rounded-full bg-violet-400 float-particle-bg-4" />
+          </div>
           
           {/* 1. MASTER SIDEBAR SYSTEM */}
           <aside className={`w-[260px] hidden md:flex flex-col border-r h-screen sticky top-0 transition-all ${
@@ -1154,9 +1423,14 @@ export default function Home() {
               {activeTab === "overview" && (
                 <div className="flex flex-col gap-8 animate-fade-in-up">
                   {/* Hero Forecast */}
-                  <section className={`w-full rounded-3xl p-6 md:p-8 border flex flex-col md:flex-row gap-6 items-center justify-between transition-all relative overflow-hidden ${
-                    darkMode ? "bg-gradient-to-r from-[#110e25] to-[#171434] border-white/[0.08]" : "bg-gradient-to-r from-[#eaeeff] to-[#f4f7ff] border-indigo-100 text-slate-800"
-                  }`}>
+                  <section 
+                    ref={heroRef}
+                    className={`w-full rounded-3xl p-6 md:p-8 border flex flex-col md:flex-row gap-6 items-center justify-between transition-all duration-[1000ms] transform relative overflow-hidden ${
+                      heroVisible ? "translate-y-0 opacity-100 filter-none" : "translate-y-8 opacity-0 filter blur-sm"
+                    } ${
+                      darkMode ? "aurora-bg border-white/[0.08]" : "aurora-light-bg border-indigo-100 text-slate-800"
+                    }`}
+                  >
                     {/* Animated floating subtle backdrop glow blobs */}
                     <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
                       <div className="absolute -top-[20%] -left-[10%] w-[220px] h-[220px] rounded-full bg-indigo-500/10 blur-2xl float-glow-1" />
@@ -1174,36 +1448,86 @@ export default function Home() {
                           : "Looking good! Your academic load is highly balanced for the next 7 days. Use your weekend focus blocks to prepare ahead."}
                       </p>
                       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 max-w-xl">
-                        <div className={`p-4 rounded-2xl border text-xs font-semibold flex items-start gap-2.5 flex-1 ${
-                          darkMode ? "bg-black/35 border-white/[0.06] text-indigo-300" : "bg-white/60 border-slate-200 text-indigo-700"
+                        <div className={`p-4 rounded-2xl border text-xs font-semibold flex items-start gap-2.5 flex-1 relative overflow-hidden transition-all duration-500 shadow-inner ai-recommendation-pulse ${
+                          darkMode ? "bg-black/45 border-indigo-500/25 text-indigo-200 shadow-indigo-500/5 hover:border-indigo-500/40" : "bg-white/70 border-indigo-200 text-indigo-700 shadow-indigo-500/5 hover:border-indigo-500/35"
                         }`}>
-                          <Zap className="w-4 h-4 text-amber-500 flex-shrink-0 animate-bounce" />
-                          <span>
-                            <strong>AI Recommendation:</strong>{" "}
-                            {collisionCount > 0 
-                              ? "Start Database Design assignment early this weekend to avoid next Tuesday's schedule collision."
-                              : "Begin revising CS301 Algorithms concepts today to guarantee standard exam preparation index."}
+                          {/* Floating tiny particles in the recommendation card */}
+                          <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                            <span className="absolute w-1 h-1 bg-indigo-400 rounded-full opacity-30 float-particle-1" />
+                            <span className="absolute w-1.5 h-1.5 bg-emerald-400 rounded-full opacity-20 float-particle-2" style={{ animationDelay: "1.5s" }} />
+                            <span className="absolute w-1 h-1 bg-cyan-400 rounded-full opacity-45 float-particle-3" style={{ animationDelay: "3s" }} />
+                          </div>
+
+                          <div className="absolute top-0 right-0 w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_8px_#6366f1] glow-pulse-indicator m-2.5" />
+                          <Zap className="w-4 h-4 text-amber-500 flex-shrink-0 animate-bounce relative z-10" />
+                          <span className="relative z-10 font-mono leading-relaxed">
+                            <strong>AI Strategy:</strong>{" "}
+                            {displayedRecommendation}
                           </span>
                         </div>
                         <button
                           onClick={triggerStressRelief}
-                          className="h-11 px-4 text-xs font-bold text-white bg-gradient-to-r from-emerald-500 to-indigo-600 hover:from-emerald-600 hover:to-indigo-700 rounded-xl flex items-center gap-1.5 shadow-lg shadow-emerald-500/10 cursor-pointer hover:scale-105 active:scale-95 transition-all border-none flex-shrink-0"
+                          className="neon-gradient-btn rounded-xl h-11 px-5 text-xs font-bold text-white cursor-pointer transition-all border-none flex-shrink-0 relative overflow-hidden flex items-center gap-1.5"
                           type="button"
                         >
                           <Sparkles className="w-4 h-4 animate-pulse" />
-                          AI Stress Decompress
+                          <span>AI Stress Decompress</span>
                         </button>
                       </div>
                     </div>
-                    <div className="flex flex-col items-center p-6 rounded-2xl border bg-black/10 dark:bg-black/25 border-white/[0.04] min-w-[200px] text-center relative z-10">
-                      <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Workload Forecast</span>
-                      <span className="text-4xl font-extrabold text-indigo-500 mt-2 mb-1"><AnimatedCounter value={workloadPercentage} />%</span>
-                      <span className={`text-[10px] px-2.5 py-0.5 rounded font-bold uppercase transition-all duration-300 ${stressBg} ${stressColor} ${stressBorder}`}>{stressLevel} Stress</span>
+
+                    <div className="flex flex-col items-center justify-center p-5 rounded-2xl border bg-black/10 dark:bg-black/25 border-white/[0.04] min-w-[190px] text-center relative z-10">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">Workload Forecast</span>
+                      
+                      {/* High Fidelity Apple/Stripe Radial Ring Widget */}
+                      <div className="relative w-22 h-22 flex items-center justify-center mb-3">
+                        <div className="absolute inset-0 rounded-full border border-dashed border-indigo-500/30 rotate-slow" />
+                        
+                        <svg className="w-18 h-18 transform -rotate-90">
+                          <circle 
+                            cx="36" 
+                            cy="36" 
+                            r="30" 
+                            stroke={darkMode ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"} 
+                            strokeWidth="4" 
+                            fill="transparent" 
+                          />
+                          <circle 
+                            cx="36" 
+                            cy="36" 
+                            r="30" 
+                            stroke="url(#indigoGrad)" 
+                            strokeWidth="4" 
+                            fill="transparent" 
+                            strokeDasharray={2 * Math.PI * 30}
+                            strokeDashoffset={2 * Math.PI * 30 * (1 - radialProgress / 100)}
+                            className="transition-all duration-1000 ease-out"
+                            strokeLinecap="round"
+                          />
+                          <defs>
+                            <linearGradient id="indigoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                              <stop offset="0%" stopColor="#10b981" />
+                              <stop offset="100%" stopColor="#6366f1" />
+                            </linearGradient>
+                          </defs>
+                        </svg>
+                        
+                        <div className="absolute flex flex-col items-center justify-center">
+                          <span className="text-xl font-black text-indigo-500"><AnimatedCounter value={radialProgress} />%</span>
+                        </div>
+                      </div>
+
+                      <span className={`text-[9px] px-2.5 py-1 rounded font-bold uppercase transition-all duration-500 shadow-sm border ${stressBg} ${stressColor} ${stressBorder}`}>{stressLevel} Stress</span>
                     </div>
                   </section>
 
                   {/* 4 Stats Cards */}
-                  <section className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                  <section 
+                    ref={statsRef}
+                    className={`grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 transition-all duration-[1000ms] transform ${
+                      statsVisible ? "translate-y-0 opacity-100 filter-none" : "translate-y-8 opacity-0 filter blur-sm"
+                    }`}
+                  >
                     {[
                       { title: "Active Tasks", count: activeTasksCount, detail: `Exams: ${examsCount} • Submissions: ${submissionsCount}`, icon: BookOpen, color: "text-indigo-500" },
                       { title: "Collisions", count: collisionCount, detail: "Overlapping deadlines", icon: AlertTriangle, color: "text-rose-500 animate-pulse" },
@@ -1211,18 +1535,78 @@ export default function Home() {
                       { title: "Stress Index", count: stressLevel, detail: "Calculated workload stress", icon: ShieldAlert, color: stressColor }
                     ].map((card, idx) => {
                       const Icon = card.icon;
+                      const tilt = cardTilt[idx] || { rx: 0, ry: 0 };
+                      
+                      // Calculate stress dynamic style for the Stress Index card
+                      let cardStressClass = "";
+                      if (card.title === "Stress Index") {
+                        if (stressLevel === "Zen (AI Optimized)") {
+                          cardStressClass = "breathe-card border-emerald-500/45 shadow-[0_0_15px_rgba(16,185,129,0.15)]";
+                        } else if (stressLevel === "Critical") {
+                          cardStressClass = "stress-critical-shake border-rose-600/60 shadow-[0_0_15px_rgba(225,29,72,0.15)]";
+                        } else if (stressLevel === "High") {
+                          cardStressClass = "stress-high-pulse border-rose-500/40";
+                        } else if (stressLevel === "Moderate") {
+                          cardStressClass = "stress-medium-breathe border-amber-500/30";
+                        } else {
+                          cardStressClass = "shadow-[0_0_12px_rgba(16,185,129,0.08)] border-emerald-500/20";
+                        }
+                      }
+                      
                       return (
-                        <div key={idx} className={`p-5 rounded-2xl border flex flex-col justify-between h-[130px] transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-indigo-500/[0.03] hover:border-indigo-500/25 cursor-pointer ${
-                          darkMode ? "bg-[#0d0c18]/60 border-white/[0.06]" : "bg-white border-slate-200 shadow-sm"
-                        } ${zenMode ? "breathe-card border-emerald-500/35" : ""}`}>
+                        <div 
+                          key={idx} 
+                          onMouseMove={(e) => handleCardMouseMove(idx, e)}
+                          onMouseLeave={() => handleCardMouseLeave(idx)}
+                          style={{ 
+                            transform: `perspective(1000px) rotateX(${tilt.rx}deg) rotateY(${tilt.ry}deg) translateY(${tilt.rx || tilt.ry ? -4 : 0}px)`,
+                            transition: tilt.rx || tilt.ry ? "none" : "transform 0.4s ease, border-color 0.3s ease, box-shadow 0.3s ease",
+                            animationDelay: `${idx * 100}ms`
+                          }}
+                          className={`p-5 rounded-2xl border flex flex-col justify-between h-[130px] hover:shadow-xl hover:shadow-indigo-500/[0.05] hover:border-indigo-500/30 cursor-pointer load-fade-in-blur opacity-0 relative overflow-hidden ${
+                            darkMode ? "bg-[#0d0c18]/60 border-white/[0.06]" : "bg-white border-slate-200 shadow-sm"
+                          } ${zenMode ? "breathe-card border-emerald-500/35" : ""} ${card.title === "Stress Index" ? cardStressClass : ""}`}
+                        >
+                          {/* Floating sparkles for Free Hours card */}
+                          {card.title === "Free Hours" && (
+                            <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                              <span className="absolute text-[9px] text-emerald-400 opacity-40 float-sparkle-1">✨</span>
+                              <span className="absolute text-[8px] text-emerald-300 opacity-30 float-sparkle-2" style={{ animationDelay: "2s" }}>✦</span>
+                            </div>
+                          )}
+
                           <div className="flex justify-between items-center text-slate-400">
-                            <span className="text-xs font-bold uppercase tracking-wider">{card.title}</span>
-                            <Icon className={`w-4 h-4 ${card.color}`} />
+                            <span className="text-[10px] font-bold uppercase tracking-wider">{card.title}</span>
+                            <Icon className={`w-4 h-4 transition-transform duration-500 ${card.color}`} style={{ transform: tilt.rx || tilt.ry ? "rotate(10deg) scale(1.12)" : "none" }} />
                           </div>
-                          <div className="flex flex-col mt-2">
-                            <span className={`text-3xl font-extrabold ${card.color.includes("text-") ? card.color.split(" ")[0] : ""}`}>
-                              {typeof card.count === "number" ? <AnimatedCounter value={card.count} /> : card.count}
-                            </span>
+                          <div className="flex flex-col mt-1.5">
+                            <div className="flex items-baseline justify-between">
+                              <span className={`text-3xl font-extrabold ${card.color.includes("text-") ? card.color.split(" ")[0] : ""}`}>
+                                {typeof card.count === "number" ? <AnimatedCounter value={card.count} /> : card.count}
+                              </span>
+                              {card.title === "Free Hours" && (
+                                <span className="text-[10px] text-slate-400 font-semibold tracking-wide">/ 40 hrs limit</span>
+                              )}
+                            </div>
+                            
+                            {card.title === "Free Hours" && (
+                              <div className="w-full h-1 bg-slate-800/40 dark:bg-white/[0.04] rounded-full mt-2 overflow-hidden relative">
+                                <div 
+                                  className="h-full bg-emerald-500 rounded-full transition-all duration-[1500ms] ease-out shadow-[0_0_8px_#10b981]"
+                                  style={{ width: `${(freeHours / 40) * 100}%` }}
+                                />
+                              </div>
+                            )}
+
+                            {card.title === "Active Tasks" && (
+                              <div className="w-full h-1 bg-slate-800/40 dark:bg-white/[0.04] rounded-full mt-2 overflow-hidden relative">
+                                <div 
+                                  className="h-full bg-indigo-500 rounded-full transition-all duration-[1500ms] ease-out"
+                                  style={{ width: `${(activeTasksCount / 12) * 100}%` }}
+                                />
+                              </div>
+                            )}
+                            
                             <span className="text-[10px] text-slate-500 mt-1">{card.detail}</span>
                           </div>
                         </div>
@@ -1231,7 +1615,12 @@ export default function Home() {
                   </section>
 
                   {/* Collision Radar & Mini Calendar */}
-                  <section className="grid grid-cols-1 lg:grid-cols-[1.6fr_1.4fr] gap-6 md:gap-8 items-start">
+                  <section 
+                    ref={radarCalendarRef}
+                    className={`grid grid-cols-1 lg:grid-cols-[1.6fr_1.4fr] gap-6 md:gap-8 items-start transition-all duration-[1000ms] transform ${
+                      radarCalendarVisible ? "translate-y-0 opacity-100 filter-none" : "translate-y-8 opacity-0 filter blur-sm"
+                    }`}
+                  >
                     {/* Collision Radar */}
                     <div className={`rounded-3xl p-6 border flex flex-col gap-5 ${
                       darkMode ? "bg-[#0d0c18]/70 border-white/[0.06]" : "bg-white border-slate-200 shadow-sm"
@@ -1251,6 +1640,11 @@ export default function Home() {
                       <div className={`relative w-full h-[140px] rounded-2xl overflow-hidden border flex items-center justify-center ${
                         darkMode ? "bg-black/45 border-rose-500/15" : "bg-rose-500/[0.02] border-rose-500/10"
                       }`}>
+                        {/* Warnings ripple overlay when threat detected */}
+                        {collisionCount > 0 && (
+                          <div className="absolute w-[80px] h-[80px] rounded-full border border-rose-500/20 bg-rose-500/[0.01] animate-ping pointer-events-none" style={{ animationDuration: "2.5s" }} />
+                        )}
+
                         {/* Radar grid lines */}
                         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                           <div className="w-[110px] h-[110px] rounded-full border border-rose-500/10" />
@@ -1283,13 +1677,13 @@ export default function Home() {
                           return (
                             <div 
                               key={col.date}
-                              className="absolute w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_#f43f5e] flex items-center justify-center animate-ping"
+                              className="absolute w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_#f43f5e] flex items-center justify-center"
                               style={{
                                 left: `calc(50% + ${x}px - 5px)`,
                                 top: `calc(50% + ${y}px - 5px)`,
-                                animationDuration: `${1.2 + cIdx * 0.3}s`
                               }}
                             >
+                              <span className="absolute inset-0 rounded-full bg-rose-500/60 animate-ping" style={{ animationDuration: `${1.5 + cIdx * 0.4}s` }} />
                               <span className="absolute w-1.5 h-1.5 rounded-full bg-rose-500" />
                             </div>
                           );
@@ -1351,23 +1745,23 @@ export default function Home() {
                           darkMode ? "bg-black/35 border-white/[0.06]" : "bg-slate-50 border-slate-200"
                         }`}>
                           <div className="flex gap-2">
-                            <input type="text" required value={quickTitle} onChange={(e)=>setQuickTitle(e.target.value)} placeholder="Event Title" className="flex-1 h-9 px-3 rounded-lg border text-xs focus:outline-none dark:bg-black/30 dark:border-white/[0.08]" />
-                            <input type="text" required value={quickCourse} onChange={(e)=>setQuickCourse(e.target.value)} placeholder="CS301" className="w-20 h-9 px-3 rounded-lg border text-xs text-center focus:outline-none dark:bg-black/30 dark:border-white/[0.08]" />
+                            <input type="text" required value={quickTitle} onChange={(e)=>setQuickTitle(e.target.value)} placeholder="Event Title" className="flex-1 h-9 px-3 rounded-lg border text-xs focus:outline-none dark:bg-black/30 dark:border-white/[0.08] focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all" />
+                            <input type="text" required value={quickCourse} onChange={(e)=>setQuickCourse(e.target.value)} placeholder="CS301" className="w-20 h-9 px-3 rounded-lg border text-xs text-center focus:outline-none dark:bg-black/30 dark:border-white/[0.08] focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all" />
                           </div>
                           <div className="grid grid-cols-3 gap-2">
-                            <input type="date" required value={quickDate} onChange={(e)=>setQuickDate(e.target.value)} className="h-9 px-2 rounded-lg border text-xs dark:bg-black/30 dark:border-white/[0.08]" />
-                            <select value={quickCategory} onChange={(e)=>setQuickCategory(e.target.value as any)} className="h-9 px-1 rounded-lg border text-xs dark:bg-black/30 dark:border-white/[0.08]">
+                            <input type="date" required value={quickDate} onChange={(e)=>setQuickDate(e.target.value)} className="h-9 px-2 rounded-lg border text-xs dark:bg-black/30 dark:border-white/[0.08] focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all" />
+                            <select value={quickCategory} onChange={(e)=>setQuickCategory(e.target.value as any)} className="h-9 px-1 rounded-lg border text-xs dark:bg-black/30 dark:border-white/[0.08] focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all">
                               <option value="Submission">Submission</option>
                               <option value="Exam">Exam</option>
                               <option value="Project">Project</option>
                             </select>
-                            <select value={quickPriority} onChange={(e)=>setQuickPriority(e.target.value as any)} className="h-9 px-1 rounded-lg border text-xs dark:bg-black/30 dark:border-white/[0.08]">
+                            <select value={quickPriority} onChange={(e)=>setQuickPriority(e.target.value as any)} className="h-9 px-1 rounded-lg border text-xs dark:bg-black/30 dark:border-white/[0.08] focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all">
                               <option value="Normal">Normal</option>
                               <option value="Important">Important</option>
                               <option value="Critical">Critical</option>
                             </select>
                           </div>
-                          <button type="submit" className="w-full h-9 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg">Add Event</button>
+                          <button type="submit" className="w-full h-9 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-all active:scale-98">Add Event</button>
                         </form>
                       )}
 
@@ -1389,9 +1783,14 @@ export default function Home() {
               {activeTab === "planner" && (
                 <div className="flex flex-col gap-8 animate-fade-in-up">
                   {/* Heatmap Section */}
-                  <section className={`rounded-3xl p-6 border ${
-                    darkMode ? "bg-[#0d0c18]/70 border-white/[0.06]" : "bg-white border-slate-200 shadow-sm"
-                  }`}>
+                  <section 
+                    ref={heatmapRef}
+                    className={`rounded-3xl p-6 border transition-all duration-[1000ms] transform ${
+                      heatmapVisible ? "translate-y-0 opacity-100 filter-none" : "translate-y-8 opacity-0 filter blur-sm"
+                    } ${
+                      darkMode ? "bg-[#0d0c18]/70 border-white/[0.06]" : "bg-white border-slate-200 shadow-sm"
+                    }`}
+                  >
                     <div className="flex flex-col md:flex-row justify-between gap-4 border-b dark:border-white/[0.04] pb-4 mb-5">
                       <div className="flex items-center gap-2">
                         <span className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-500"><BrainCircuit className="w-5 h-5" /></span>
@@ -1419,12 +1818,13 @@ export default function Home() {
                     <div className="flex flex-col gap-5">
                       {heatmapView === "weekly" && (
                         <div className="grid grid-cols-7 gap-3 font-sans">
-                          {weeklyDays.map(day => {
+                          {weeklyDays.map((day, idx) => {
                             const details = getHoverDetails(day.dateStr);
                             return (
                               <div
                                 key={day.dateStr} onClick={() => setSelectedHeatDate(day.dateStr)}
-                                className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col items-center justify-between text-center min-h-[110px] ${
+                                style={{ animationDelay: `${idx * 40}ms` }}
+                                className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col items-center justify-between text-center min-h-[110px] load-fade-in-blur opacity-0 ${
                                   selectedHeatDate === day.dateStr ? "ring-2 ring-indigo-500/50 scale-105" : ""
                                 } ${getHeatmapColorClass(details.tasks)}`}
                               >
@@ -1439,12 +1839,13 @@ export default function Home() {
 
                       {heatmapView === "monthly" && (
                         <div className="grid grid-cols-6 sm:grid-cols-10 gap-2.5">
-                          {monthlyDays.map(day => {
+                          {monthlyDays.map((day, idx) => {
                             const details = getHoverDetails(day.dateStr);
                             return (
                               <div
                                 key={day.dateStr} onClick={() => setSelectedHeatDate(day.dateStr)}
-                                className={`h-[48px] rounded-xl border flex flex-col items-center justify-center cursor-pointer transition-all hover:scale-105 ${
+                                style={{ animationDelay: `${idx * 15}ms` }}
+                                className={`h-[48px] rounded-xl border flex flex-col items-center justify-center cursor-pointer transition-all hover:scale-105 load-fade-in-blur opacity-0 ${
                                   selectedHeatDate === day.dateStr ? "ring-2 ring-indigo-500" : ""
                                 } ${getHeatmapColorClass(details.tasks)}`}
                               >
@@ -1466,10 +1867,12 @@ export default function Home() {
                                   date.setDate(anchorDate.getDate() + (wIdx * 7 + dIdx));
                                   const dateStr = date.toISOString().split("T")[0];
                                   const details = getHoverDetails(dateStr);
+                                  const overallIdx = wIdx * 7 + dIdx;
                                   return (
                                     <div
                                       key={dateStr} onClick={() => setSelectedHeatDate(dateStr)}
-                                      className={`w-5.5 h-5.5 rounded border cursor-pointer hover:scale-110 ${
+                                      style={{ animationDelay: `${overallIdx * 6}ms` }}
+                                      className={`w-5.5 h-5.5 rounded border cursor-pointer hover:scale-110 load-fade-in-blur opacity-0 ${
                                         selectedHeatDate === dateStr ? "ring-1.5 ring-indigo-500" : ""
                                       } ${getHeatmapColorClass(details.tasks)}`}
                                     />
@@ -1839,7 +2242,7 @@ export default function Home() {
                       <div className="flex flex-col items-center py-4 relative">
                         <div className="w-32 h-32 rounded-full border-8 border-slate-200/50 dark:border-slate-800 flex items-center justify-center relative">
                           <svg className="absolute top-[-8px] left-[-8px] w-[144px] h-[144px] transform -rotate-90">
-                            <circle cx="72" cy="72" r="64" stroke="url(#g1)" strokeWidth="8" fill="transparent" strokeDasharray="402" strokeDashoffset={402 - (402 * productivityScore) / 100} strokeLinecap="round" />
+                            <circle cx="72" cy="72" r="64" stroke="url(#g1)" strokeWidth="8" fill="transparent" strokeDasharray="402" strokeDashoffset={402 - (402 * productivityProgress) / 100} strokeLinecap="round" />
                             <defs>
                               <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%">
                                 <stop offset="0%" stopColor="#3F51B5" /><stop offset="100%" stopColor="#10b981" />
@@ -1847,7 +2250,7 @@ export default function Home() {
                             </defs>
                           </svg>
                           <div className="flex flex-col items-center">
-                            <span className="text-3xl font-extrabold">{productivityScore}</span>
+                            <span className="text-3xl font-extrabold">{productivityProgress}</span>
                             <span className="text-[10px] text-slate-400 font-bold">Index</span>
                           </div>
                         </div>

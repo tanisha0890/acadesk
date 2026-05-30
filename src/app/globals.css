@@ -205,5 +205,262 @@ body {
   animation: slow-float 6s ease-in-out infinite;
 }
 
+/* --- PREMIUM STUDIO HACKATHON ANIMATIONS --- */
+
+@keyframes aurora-flow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.aurora-bg {
+  background: linear-gradient(135deg, #090815 0%, #0d0c24 25%, #0f1a36 50%, #081e28 75%, #090815 100%);
+  background-size: 300% 300%;
+  animation: aurora-flow 18s ease infinite;
+}
+
+.aurora-light-bg {
+  background: linear-gradient(135deg, #f4f6ff 0%, #eaeeff 30%, #e2e8ff 60%, #eaeeff 100%);
+  background-size: 300% 300%;
+  animation: aurora-flow 15s ease infinite;
+}
+
+@keyframes rotate-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.rotate-slow {
+  animation: rotate-slow 18s linear infinite;
+}
+
+@keyframes yellow-breathe {
+  0%, 100% { box-shadow: 0 0 10px rgba(245, 158, 11, 0.15); border-color: rgba(245, 158, 11, 0.25); }
+  50% { box-shadow: 0 0 25px rgba(245, 158, 11, 0.45); border-color: rgba(245, 158, 11, 0.6); }
+}
+
+.stress-medium-breathe {
+  animation: yellow-breathe 2.4s ease-in-out infinite;
+}
+
+@keyframes red-warning-pulse {
+  0%, 100% { box-shadow: 0 0 10px rgba(239, 68, 68, 0.15); border-color: rgba(239, 68, 68, 0.25); transform: scale(1); }
+  50% { box-shadow: 0 0 25px rgba(239, 68, 68, 0.55); border-color: rgba(239, 68, 68, 0.7); transform: scale(1.015); }
+}
+
+.stress-high-pulse {
+  animation: red-warning-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes critical-shake {
+  0%, 100% { transform: translateX(0); box-shadow: 0 0 12px rgba(239, 68, 68, 0.25); border-color: rgba(239, 68, 68, 0.4); }
+  15%, 45%, 75% { transform: translateX(-2.5px); }
+  30%, 60%, 90% { transform: translateX(2.5px); }
+}
+
+.stress-critical-shake {
+  animation: critical-shake 0.35s ease-in-out infinite;
+}
+
+@keyframes border-glow-pulse {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.85; }
+}
+
+.glow-pulse-indicator {
+  animation: border-glow-pulse 3s ease-in-out infinite;
+}
+
+@keyframes shockwave {
+  0% { transform: translate(-50%, -50%) scale(0.4); opacity: 1; border-width: 6px; }
+  100% { transform: translate(-50%, -50%) scale(3.2); opacity: 0; border-width: 1px; }
+}
+
+.shockwave-ring {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 550px;
+  height: 550px;
+  border-radius: 50%;
+  border-style: solid;
+  border-color: rgba(16, 185, 129, 0.5);
+  background: radial-gradient(circle, rgba(16,185,129,0.06) 0%, rgba(99,102,241,0.01) 75%, transparent 100%);
+  pointer-events: none;
+  z-index: 200;
+  animation: shockwave 1.5s cubic-bezier(0.1, 0.8, 0.2, 1) forwards;
+}
+
+.load-fade-in-blur {
+  animation: loadFadeInBlur 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes loadFadeInBlur {
+  from { opacity: 0; filter: blur(8px); transform: translateY(12px); }
+  to { opacity: 1; filter: blur(0); transform: translateY(0); }
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.95); opacity: 0.5; }
+  100% { transform: scale(1.4); opacity: 0; }
+}
+
+.pulse-ring-slow {
+  animation: pulse-ring 2.5s cubic-bezier(0.215, 0.610, 0.355, 1) infinite;
+}
 
 
+@keyframes slow-float {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-10px) scale(1.06);
+  }
+}
+
+.float-glow-1 {
+  animation: slow-float 8s ease-in-out infinite;
+}
+
+.float-glow-2 {
+  animation: slow-float 6s ease-in-out infinite;
+}
+
+/* --- ADDITIONAL HIGH-FIDELITY SAAS COMPOSING STYLES --- */
+
+@keyframes border-neon-flow {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.neon-gradient-btn {
+  position: relative;
+  background: linear-gradient(90deg, #10b981, #6366f1, #06b6d4, #10b981);
+  background-size: 300% 300%;
+  animation: border-neon-flow 5s ease infinite;
+  box-shadow: 0 0 15px rgba(99, 102, 241, 0.4), inset 0 0 6px rgba(255, 255, 255, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.neon-gradient-btn:hover {
+  transform: scale(1.03) translateY(-1px);
+  box-shadow: 0 0 25px rgba(99, 102, 241, 0.65), 0 0 10px rgba(16, 185, 129, 0.3);
+}
+
+.neon-gradient-btn::after {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  background: #090815;
+  border-radius: 11px;
+  z-index: 1;
+  transition: opacity 0.3s ease;
+  opacity: 0.85;
+}
+
+.neon-gradient-btn:hover::after {
+  opacity: 0.72;
+}
+
+.neon-gradient-btn > * {
+  position: relative;
+  z-index: 2;
+}
+
+@keyframes ai-card-pulse {
+  0%, 100% {
+    border-color: rgba(99, 102, 241, 0.2);
+    box-shadow: 0 0 12px rgba(99, 102, 241, 0.05);
+  }
+  50% {
+    border-color: rgba(99, 102, 241, 0.45);
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.15);
+  }
+}
+
+.ai-recommendation-pulse {
+  animation: ai-card-pulse 4s ease-in-out infinite;
+}
+
+@keyframes float-particle-drift {
+  0% { transform: translate(120%, 20%) scale(0.5); opacity: 0; }
+  10% { opacity: 0.6; }
+  90% { opacity: 0.4; }
+  100% { transform: translate(-20%, 80%) scale(1.2); opacity: 0; }
+}
+
+.float-particle-1 {
+  top: 10%;
+  right: 10%;
+  animation: float-particle-drift 6s linear infinite;
+}
+
+.float-particle-2 {
+  top: 40%;
+  right: 25%;
+  animation: float-particle-drift 8s linear infinite;
+}
+
+.float-particle-3 {
+  top: 70%;
+  right: 5%;
+  animation: float-particle-drift 7s linear infinite;
+}
+
+@keyframes float-sparkle {
+  0%, 100% { transform: translateY(0) scale(0.6); opacity: 0.15; }
+  50% { transform: translateY(-12px) scale(1.2); opacity: 0.7; }
+}
+
+.float-sparkle-1 {
+  bottom: 12%;
+  left: 20%;
+  animation: float-sparkle 4s ease-in-out infinite;
+}
+
+.float-sparkle-2 {
+  bottom: 25%;
+  right: 15%;
+  animation: float-sparkle 5s ease-in-out infinite;
+}
+
+@keyframes slow-bg-drift-1 {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(40px, -50px); }
+}
+@keyframes slow-bg-drift-2 {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(-30px, 60px); }
+}
+
+.float-particle-bg-1 {
+  top: 15%;
+  left: 20%;
+  animation: slow-bg-drift-1 25s ease-in-out infinite;
+  filter: blur(1.5px);
+}
+.float-particle-bg-2 {
+  top: 75%;
+  left: 10%;
+  animation: slow-bg-drift-2 30s ease-in-out infinite;
+  filter: blur(1px);
+}
+.float-particle-bg-3 {
+  top: 35%;
+  right: 15%;
+  animation: slow-bg-drift-2 22s ease-in-out infinite;
+  filter: blur(1.5px);
+}
+.float-particle-bg-4 {
+  top: 80%;
+  right: 25%;
+  animation: slow-bg-drift-1 28s ease-in-out infinite;
+  filter: blur(1px);
+}
