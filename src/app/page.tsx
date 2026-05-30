@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { firebaseSignIn, firebaseSignUp, firebaseGoogleSignIn, firebaseSignOut } from "./lib/firebase";
 import { 
   LayoutDashboard, 
   Calendar, 
@@ -174,6 +175,8 @@ export default function Home() {
   const [passwordInput, setPasswordInput] = useState("");
   const [nameInput, setNameInput] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [landingLoaded, setLandingLoaded] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
   
   // App States
   const [deadlines, setDeadlines] = useState<Deadline[]>(INITIAL_DEADLINES);
@@ -394,7 +397,7 @@ export default function Home() {
   let stressBorder = "border-emerald-500/20";
   
   if (isOptimized || zenMode) {
-    stressLevel = "Zen (AI Optimized)";
+    stressLevel = "Zen";
     stressColor = "text-emerald-400 font-extrabold shadow-sm";
     stressBg = "bg-gradient-to-r from-emerald-500/20 to-teal-500/25 border-emerald-500/30 breathe-card shadow-lg shadow-emerald-500/10";
     stressBorder = "border-emerald-500/40";
@@ -666,6 +669,14 @@ export default function Home() {
       if (savedScore) setProductivityScore(Number(savedScore));
       if (savedChat) setChatHistory(JSON.parse(savedChat));
     }
+  }, []);
+
+  // Landing loading timer
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setLandingLoaded(true);
+    }, 2600);
+    return () => clearTimeout(timer);
   }, []);
 
   // 5. CYCLING AI LOADING EXPERIENCE STAGES HOOK
@@ -1141,172 +1152,339 @@ export default function Home() {
 
       {/* A. AUTH & LANDING SCREENS */}
       {currentPage !== "dashboard" && (
-        <div className="min-h-screen w-full flex flex-col items-center justify-center px-6 relative z-10 animate-fade-in">
-          {/* Theme Switcher */}
+        <div className={`acadesk-body-landing ${darkMode ? "dark-mode" : ""} min-h-screen w-full flex items-center justify-center p-6 relative z-10 overflow-hidden`}>
+          
+          {/* Top-Left Logo / Brand Icon */}
+          <div className="acadesk-top-left-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M21.0001 12.7C20.8001 12.7 20.5001 12.8 20.3001 12.9C18.9001 13.7 17.3001 14.1 15.6001 14.1C10.7001 14.1 6.70007 10.1 6.70007 5.20001C6.70007 3.50001 7.10007 1.90001 7.90007 0.500014C8.00007 0.300014 8.00007 0.100014 7.90007 0.0001375C7.70007 -0.0997388 7.50007 -0.0997388 7.40007 0.0001375C3.00007 2.00014 0.100098 6.40001 0.100098 11.4C0.100098 17.9 5.4001 23.2 11.9001 23.2C16.9001 23.2 21.3001 20.3 23.3001 15.9C23.4001 15.8 23.4001 15.6 23.3001 15.4C23.2001 15.3 23.0001 15.2 22.8001 15.2C22.2001 15.2 21.6001 12.7 21.0001 12.7Z" fill={darkMode ? "#E6E1F9" : "#1D1055"}/>
+              <path d="M20.5 4.5L21.2 6L22.7 6.2L21.5 7.2L21.9 8.7L20.5 7.9L19.1 8.7L19.5 7.2L18.3 6.2L19.8 6L20.5 4.5Z" fill={darkMode ? "#E6E1F9" : "#1D1055"}/>
+            </svg>
+          </div>
+
+          {/* Theme Switcher Toggle */}
           <button
             onClick={() => setDarkMode(!darkMode)}
-            className={`absolute top-6 right-6 p-3 rounded-full border shadow-md hover:scale-105 active:scale-95 transition-all duration-300 flex items-center justify-center cursor-pointer ${
-              darkMode ? "bg-slate-900/80 border-slate-700 text-yellow-400" : "bg-white/80 border-slate-200 text-slate-700"
-            }`}
+            className="absolute top-6 right-6 p-3 rounded-full border shadow-md hover:scale-105 active:scale-95 transition-all duration-300 flex items-center justify-center cursor-pointer bg-white/10 backdrop-blur-md border-white/20 text-white z-50"
+            style={{ minWidth: "44px", minHeight: "44px" }}
           >
-            {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            {darkMode ? <Sun className="w-5 h-5 text-yellow-400" /> : <Moon className="w-5 h-5 text-indigo-900" />}
           </button>
 
-          {currentPage === "landing" && (
-            <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-12 items-center justify-center px-4 select-none animate-fade-in-up">
-              {/* Left Column: Heading and description */}
-              <div className="flex flex-col items-start text-left">
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-indigo-500/20 bg-indigo-500/5 mb-6 text-sm font-semibold text-indigo-400 animate-pulse">
-                  <Sparkles className="w-4 h-4" />
-                  AI Academic Timetable Command Center
-                </div>
+          {/* CARD CONTAINER */}
+          <div className={`acadesk-app-container ${landingLoaded ? "loaded" : ""}`} id="appContainer">
+            
+            {/* LOGO ENGINE */}
+            <div className="acadesk-logo-wrapper">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" className="acadesk-logo-svg">
+                <defs>
+                  <linearGradient id="bookCoverGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#8B5CF6" />
+                    <stop offset="100%" stopColor="#6D28D9" />
+                  </linearGradient>
+                  <linearGradient id="bookSpineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="#5B21B6" />
+                    <stop offset="100%" stopColor="#7C3AED" />
+                  </linearGradient>
+                  <filter id="logoShadow" x="-20%" y="-20%" width="140%" height="140%">
+                    <feDropShadow dx="0" dy="6" stdDeviation="10" floodColor="#7C3AED" floodOpacity="0.14" />
+                  </filter>
+                </defs>
 
-                <h1 className="text-5xl sm:text-6xl font-extrabold leading-tight tracking-tight flex flex-col gap-1 mb-6">
-                  <span className="text-slate-400 text-3xl font-medium tracking-wide">INTRODUCING</span>
-                  <span className="flex gap-2">
-                    <span className={darkMode ? "text-[#38bdf8]" : "text-[#0c4786]"}>SYNC</span>
-                    <span className={darkMode ? "text-[#10b981]" : "text-[#1fa291]"}>SPACE</span>
-                  </span>
-                </h1>
+                <g className="logo-group" filter="url(#logoShadow)">
+                  <path className="logo-pages-3" d="M 66,46 C 80,30 120,30 144,46 Z" fill="#E2E8F0" stroke="#2E1065" strokeWidth="3" />
+                  <path className="logo-pages-2" d="M 67,46 C 80,34 120,34 145,46 Z" fill="#CBD5E1" stroke="#2E1065" strokeWidth="3" />
+                  <path className="logo-pages-1" d="M 68,46 C 80,38 120,38 146,46 Z" fill="#F8FAFC" stroke="#2E1065" strokeWidth="3" />
 
-                <p className={`text-base leading-relaxed max-w-lg mb-8 ${
-                  darkMode ? "text-slate-400" : "text-slate-600"
-                }`}>
-                  Unfold a collision-free timetable in real-time. Drag the sequencer to watch multi-dimensional schedule constraints assemble into a balanced academic calendar.
-                </p>
+                  <path className="logo-spine-fill" d="M 68,46 L 56,46 C 50,46 50,52 50,56 L 50,144 C 50,148 50,154 56,154 L 68,154 Z" fill="url(#bookSpineGrad)" />
+                  <path className="logo-cover-fill" d="M 68,46 L 144,46 Q 152,46 152,54 L 152,146 Q 152,154 144,154 L 68,154 Z" fill="url(#bookCoverGrad)" />
 
-                <div className="flex flex-col sm:flex-row gap-4 mb-8">
-                  <button
-                    onClick={() => setCurrentPage("login")}
-                    className="w-[180px] h-12 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-lg transition-all hover:-translate-y-0.5 cursor-pointer border-none"
-                  >
-                    Sign In
-                  </button>
-                  <button
-                    onClick={() => setCurrentPage("signup")}
-                    className={`w-[180px] h-12 text-sm font-bold rounded-xl border transition-all hover:-translate-y-0.5 cursor-pointer ${
-                      darkMode ? "bg-white/[0.03] border-white/[0.08] text-white" : "bg-white border-slate-200 text-slate-700"
-                    }`}
-                  >
-                    Create Account
-                  </button>
-                </div>
+                  <rect className="logo-spine-band" x="50" y="70" width="18" height="8" fill="#4C1D95" opacity="0.6" rx="2" />
+                  <rect className="logo-spine-band" x="50" y="122" width="18" height="8" fill="#4C1D95" opacity="0.6" rx="2" />
 
-                {/* Apple-style Sequencer Drag Controller */}
-                <div className="w-full max-w-md flex flex-col gap-2 mt-4">
-                  <div className="flex justify-between items-center text-xs font-bold text-slate-400 uppercase tracking-wider">
-                    <span>Sequencer Stage</span>
-                    <span className="text-indigo-400">{sequenceProgress}%</span>
-                  </div>
-                  <input 
-                    type="range" 
-                    min="0" 
-                    max="100" 
-                    value={sequenceProgress} 
-                    onChange={(e) => setSequenceProgress(parseInt(e.target.value))} 
-                    className="w-full h-1.5 rounded-lg appearance-none bg-slate-800 accent-indigo-500 cursor-ew-resize outline-none"
-                  />
-                  <span className="text-[10px] text-slate-500 font-medium">Drag slider or move mouse over interactive canvas to sequence constraints.</span>
-                </div>
-              </div>
+                  <path className="logo-outline" d="M 68,46 L 144,46 Q 152,46 152,54 L 152,146 Q 152,154 144,154 L 56,154 Q 50,154 50,144 L 50,56 Q 50,46 56,46 Z" fill="none" stroke="#2E1065" strokeWidth="4.5" strokeLinejoin="round" />
+                  <line className="logo-spine-divider" x1="68" y1="46" x2="68" y2="154" stroke="#2E1065" strokeWidth="4.5" strokeLinecap="round" />
 
-              {/* Right Column: High Fidelity Sequencer Canvas */}
-              <div 
-                onMouseMove={handleSequenceMouseMove}
-                className={`relative w-full aspect-square max-w-[420px] rounded-3xl border flex items-center justify-center p-4 overflow-hidden transition-all duration-500 ${
-                  darkMode ? "bg-[#0d0c18]/40 border-white/[0.06] shadow-2xl animate-fade-in" : "bg-white border-slate-200 shadow-xl animate-fade-in"
-                }`}
-              >
-                <canvas 
-                  ref={sequenceCanvasRef} 
-                  className="w-full h-full"
-                />
-                
-                {/* Visual state overlays based on progress */}
-                <div className="absolute bottom-4 left-4 right-4 flex justify-between pointer-events-none text-[9px] font-bold uppercase tracking-widest text-slate-500">
-                  <span>Stage: {sequenceProgress < 30 ? "Dimensional Constraints" : sequenceProgress < 75 ? "Unfolding Calendar Matrix" : "Timetable Assembled"}</span>
-                  <span className="animate-pulse">{sequenceProgress === 100 ? "Sync Complete ✓" : "Processing"}</span>
-                </div>
-              </div>
+                  <g className="logo-face">
+                    <path className="logo-eyebrow eyebrow-left" d="M 90,84 Q 96,79 102,84" fill="none" stroke="#2E1065" strokeWidth="2.5" strokeLinecap="round" />
+                    <path className="logo-eyebrow eyebrow-right" d="M 118,84 Q 124,79 130,84" fill="none" stroke="#2E1065" strokeWidth="2.5" strokeLinecap="round" />
+
+                    <g className="logo-eye eye-left">
+                      <circle cx="96" cy="94" r="6" fill="#2E1065" />
+                      <circle cx="94" cy="92" r="1.8" fill="#FFFFFF" />
+                    </g>
+                    <g className="logo-eye eye-right">
+                      <circle cx="124" cy="94" r="6" fill="#2E1065" />
+                      <circle cx="122" cy="92" r="1.8" fill="#FFFFFF" />
+                    </g>
+
+                    <circle className="logo-blush blush-left" cx="86" cy="106" r="7" fill="#F43F5E" />
+                    <circle className="logo-blush blush-right" cx="134" cy="106" r="7" fill="#F43F5E" />
+
+                    <path className="logo-smile" d="M 96,108 C 96,121 124,121 124,108" fill="none" stroke="#2E1065" strokeWidth="3.5" strokeLinecap="round" />
+                  </g>
+                </g>
+              </svg>
+              <h1 className="acadesk-logo-text">Acadesk</h1>
             </div>
-          )}
 
-          {(currentPage === "login" || currentPage === "signup") && (
-            <div className="w-full max-w-[400px] flex flex-col animate-fade-in-up">
-              <button
-                onClick={() => setCurrentPage("landing")}
-                className="text-xs font-bold text-slate-400 hover:text-white mb-6 self-start"
-              >
-                ← Back
-              </button>
+            {/* LOADING BAR */}
+            <div className="acadesk-loading-container" id="loadingContainer">
+              <div className="acadesk-loading-bar"></div>
+            </div>
 
-              <form 
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handleSetLoggedInEmail(emailInput || "student@university.edu");
-                  setDashboardLoading(true);
-                  setCurrentPage("dashboard");
-                }}
-                className={`rounded-3xl p-8 w-full border flex flex-col transition-all ${
-                  darkMode ? "bg-[#0d0c18]/85 border-white/[0.06] shadow-2xl" : "bg-white border-slate-200 shadow-lg text-slate-800"
-                }`}
-              >
-                <h3 className="text-xl font-bold mb-1">{currentPage === "login" ? "Welcome Back" : "Create Account"}</h3>
-                <p className="text-xs text-slate-400 mb-6">Optimized, collision-free student timetables</p>
+            {/* SIGN IN FORM VIEW */}
+            {landingLoaded && (currentPage === "landing" || currentPage === "login") && (
+              <div className="acadesk-auth-view visible acadesk-form-fade-in" id="loginContent">
+                <h2 className="acadesk-welcome-title">Hi, User!</h2>
+                <p className="acadesk-subtitle">Ready when you are.</p>
+                <p className="acadesk-sub-caption">Let's get things done.</p>
 
-                {currentPage === "signup" && (
-                  <div className="flex flex-col mb-4">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Name</label>
-                    <div className="relative flex items-center">
-                      <User className="absolute left-4 w-4 h-4 text-slate-500" />
-                      <input
-                        type="text" required value={nameInput} onChange={(e) => setNameInput(e.target.value)} placeholder="Alex Rivera"
-                        className={`w-full h-12 pl-12 pr-4 border rounded-xl text-sm font-semibold transition-all focus:outline-none ${
-                          darkMode ? "bg-black/30 border-white/[0.08] text-white" : "bg-white border-slate-200 text-slate-800"
-                        }`}
-                      />
-                    </div>
+                <button 
+                  type="button" 
+                  onClick={async () => {
+                    setAuthError(null);
+                    try {
+                      const user = await firebaseGoogleSignIn();
+                      handleSetLoggedInEmail(user.email || "google-student@acadesk.edu");
+                      setDashboardLoading(true);
+                      setCurrentPage("dashboard");
+                    } catch (err: any) {
+                      console.error(err);
+                      setAuthError(err.message || "Google Sign-In failed.");
+                    }
+                  }}
+                  className="acadesk-google-btn"
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
+                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
+                  </svg>
+                  Continue with Google
+                </button>
+
+                <div className="acadesk-separator">or</div>
+
+                {authError && (
+                  <div className="w-full mb-4 p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/25 text-rose-500 text-xs font-semibold text-center animate-pulse animate-fade-in">
+                    {authError}
                   </div>
                 )}
 
-                <div className="flex flex-col mb-4">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Email</label>
-                  <div className="relative flex items-center">
-                    <Mail className="absolute left-4 w-4 h-4 text-slate-500" />
-                    <input
-                      type="email" required value={emailInput} onChange={(e) => setEmailInput(e.target.value)} placeholder="student@university.edu"
-                      className={`w-full h-12 pl-12 pr-4 border rounded-xl text-sm font-semibold transition-all focus:outline-none ${
-                        darkMode ? "bg-black/30 border-white/[0.08] text-white" : "bg-white border-slate-200 text-slate-800"
-                      }`}
-                    />
+                <form 
+                  id="signInForm" 
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    setAuthError(null);
+                    try {
+                      const user = await firebaseSignIn(emailInput, passwordInput);
+                      handleSetLoggedInEmail(user.email || "surajchoudhary5002@gmail.com");
+                      setDashboardLoading(true);
+                      setCurrentPage("dashboard");
+                    } catch (err: any) {
+                      console.error(err);
+                      setAuthError(err.message || "Authentication failed. Please verify credentials.");
+                    }
+                  }}
+                >
+                  <div className="acadesk-form-group">
+                    <label htmlFor="email">Email</label>
+                    <div className="acadesk-input-wrapper">
+                      <span className="acadesk-input-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                      </span>
+                      <input 
+                        id="email" 
+                        type="email" 
+                        placeholder="Enter your email" 
+                        value={emailInput}
+                        onChange={(e) => setEmailInput(e.target.value)}
+                        required 
+                      />
+                    </div>
                   </div>
-                </div>
 
-                <div className="flex flex-col mb-6">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Password</label>
-                  <div className="relative flex items-center">
-                    <Key className="absolute left-4 w-4 h-4 text-slate-500" />
-                    <input
-                      type={showPassword ? "text" : "password"} required value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} placeholder="••••••••"
-                      className={`w-full h-12 pl-12 pr-12 border rounded-xl text-sm font-semibold transition-all focus:outline-none ${
-                        darkMode ? "bg-black/30 border-white/[0.08] text-white" : "bg-white border-slate-200 text-slate-800"
-                      }`}
-                    />
-                    <button
-                      type="button" onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 text-slate-400 hover:text-slate-300 bg-transparent border-none cursor-pointer flex items-center justify-center"
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
+                  <div className="acadesk-form-group">
+                    <label htmlFor="password">Password</label>
+                    <div className="acadesk-input-wrapper">
+                      <span className="acadesk-input-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                      </span>
+                      <input 
+                        id="password" 
+                        type={showPassword ? "text" : "password"} 
+                        placeholder="Enter your password" 
+                        value={passwordInput}
+                        onChange={(e) => setPasswordInput(e.target.value)}
+                        required 
+                      />
+                      <span 
+                        className="acadesk-toggle-password"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        <svg 
+                          width="20" 
+                          height="20" 
+                          viewBox="0 0 24 24" 
+                          fill="none" 
+                          stroke={showPassword ? "#8257E5" : "#9CA3AF"} 
+                          strokeWidth="2" 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round"
+                        >
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                          <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                      </span>
+                    </div>
                   </div>
-                </div>
 
-                <button type="submit" className="w-full h-12 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl">
-                  {currentPage === "login" ? "Sign In" : "Sign Up"}
-                </button>
-              </form>
-            </div>
-          )}
+                  <div className="acadesk-form-options">
+                    <label className="acadesk-remember-me">
+                      <input type="checkbox" id="rememberMe" defaultChecked />
+                      Remember me
+                    </label>
+                    <a href="#" className="acadesk-forgot-link" onClick={(e) => e.preventDefault()}>Forgot password?</a>
+                  </div>
+
+                  <button type="submit" className="acadesk-login-btn">
+                    Sign In 
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                  </button>
+
+                  <p className="acadesk-switch-prompt">
+                    Don't have an account?{" "}
+                    <span id="toSignUp" onClick={() => setCurrentPage("signup")}>
+                      Create Account &rarr;
+                    </span>
+                  </p>
+                </form>
+              </div>
+            )}
+
+            {/* CREATE ACCOUNT FORM VIEW */}
+            {landingLoaded && currentPage === "signup" && (
+              <div className="acadesk-auth-view visible acadesk-form-fade-in" id="signUpContent">
+                <h2 className="acadesk-welcome-title">Welcome!</h2>
+                <p className="acadesk-subtitle">Join Acadesk today.</p>
+                <p className="acadesk-sub-caption">Start managing your dashboard.</p>
+
+                {authError && (
+                  <div className="w-full mb-4 p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/25 text-rose-500 text-xs font-semibold text-center animate-pulse animate-fade-in">
+                    {authError}
+                  </div>
+                )}
+
+                <form 
+                  id="signUpForm" 
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    setAuthError(null);
+                    try {
+                      const user = await firebaseSignUp(emailInput, passwordInput, nameInput);
+                      handleSetLoggedInEmail(user.email || "surajchoudhary5002@gmail.com");
+                      setDashboardLoading(true);
+                      setCurrentPage("dashboard");
+                    } catch (err: any) {
+                      console.error(err);
+                      setAuthError(err.message || "Registration failed. Please try a stronger password.");
+                    }
+                  }}
+                >
+                  <div className="acadesk-form-group">
+                    <label htmlFor="regName">Full Name</label>
+                    <div className="acadesk-input-wrapper">
+                      <span className="acadesk-input-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                      </span>
+                      <input 
+                        id="regName" 
+                        type="text" 
+                        placeholder="Enter your full name" 
+                        value={nameInput}
+                        onChange={(e) => setNameInput(e.target.value)}
+                        required 
+                      />
+                    </div>
+                  </div>
+
+                  <div className="acadesk-form-group">
+                    <label htmlFor="regEmail">Email Address</label>
+                    <div className="acadesk-input-wrapper">
+                      <span className="acadesk-input-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                      </span>
+                      <input 
+                        id="regEmail" 
+                        type="email" 
+                        placeholder="Enter your email" 
+                        value={emailInput}
+                        onChange={(e) => setEmailInput(e.target.value)}
+                        required 
+                      />
+                    </div>
+                  </div>
+
+                  <div className="acadesk-form-group">
+                    <label htmlFor="regPassword">Password</label>
+                    <div className="acadesk-input-wrapper">
+                      <span className="acadesk-input-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                      </span>
+                      <input 
+                        id="regPassword" 
+                        type={showPassword ? "text" : "password"} 
+                        placeholder="Create strong password" 
+                        value={passwordInput}
+                        onChange={(e) => setPasswordInput(e.target.value)}
+                        required 
+                      />
+                      <span 
+                        className="acadesk-toggle-password"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        <svg 
+                          width="20" 
+                          height="20" 
+                          viewBox="0 0 24 24" 
+                          fill="none" 
+                          stroke={showPassword ? "#8257E5" : "#9CA3AF"} 
+                          strokeWidth="2" 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round"
+                        >
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                          <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="acadesk-form-options">
+                    <label className="acadesk-remember-me">
+                      <input type="checkbox" id="agreeTerms" required />
+                      I agree to the Terms of Service
+                    </label>
+                  </div>
+
+                  <button type="submit" className="acadesk-login-btn">
+                    Create Account 
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                  </button>
+
+                  <p className="acadesk-switch-prompt">
+                    Already have an account?{" "}
+                    <span id="toSignIn" onClick={() => setCurrentPage("login")}>
+                      &larr; Back to Login
+                    </span>
+                  </p>
+                </form>
+              </div>
+            )}
+            
+          </div>
         </div>
       )}
 
@@ -1327,9 +1505,34 @@ export default function Home() {
             darkMode ? "bg-[#0d0c18]/85 border-white/[0.06] backdrop-blur-xl" : "bg-white/80 border-slate-200 backdrop-blur-xl"
           }`}>
             <div className="p-6 border-b border-white/[0.04] flex items-center justify-between">
-              <h1 className="text-xl font-bold uppercase leading-none tracking-wider flex items-center">
-                <span className={darkMode ? "text-[#38bdf8]" : "text-[#0c4786]"}>SYNC</span>
-                <span className={darkMode ? "text-[#10b981]" : "text-[#1fa291]"}>SPACE</span>
+              <h1 className="text-xl font-bold uppercase leading-none tracking-wider flex items-center gap-2 select-none">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" className="w-6 h-6 acadesk-logo-svg pointer-events-none">
+                  <defs>
+                    <linearGradient id="miniBookCoverGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#8B5CF6" />
+                      <stop offset="100%" stopColor="#6D28D9" />
+                    </linearGradient>
+                    <linearGradient id="miniBookSpineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="#5B21B6" />
+                      <stop offset="100%" stopColor="#7C3AED" />
+                    </linearGradient>
+                  </defs>
+                  <g className="logo-group">
+                    <path className="logo-pages-3" d="M 66,46 C 80,30 120,30 144,46 Z" fill="#E2E8F0" stroke="#2E1065" strokeWidth="3" />
+                    <path className="logo-pages-2" d="M 67,46 C 80,34 120,34 145,46 Z" fill="#CBD5E1" stroke="#2E1065" strokeWidth="3" />
+                    <path className="logo-pages-1" d="M 68,46 C 80,38 120,38 146,46 Z" fill="#F8FAFC" stroke="#2E1065" strokeWidth="3" />
+                    <path className="logo-spine-fill" d="M 68,46 L 56,46 C 50,46 50,52 50,56 L 50,144 C 50,148 50,154 56,154 L 68,154 Z" fill="url(#miniBookSpineGrad)" />
+                    <path className="logo-cover-fill" d="M 68,46 L 144,46 Q 152,46 152,54 L 152,146 Q 152,154 144,154 L 68,154 Z" fill="url(#miniBookCoverGrad)" />
+                    <path className="logo-outline" d="M 68,46 L 144,46 Q 152,46 152,54 L 152,146 Q 152,154 144,154 L 56,154 Q 50,154 50,144 L 50,56 Q 50,46 56,46 Z" fill="none" stroke="#2E1065" strokeWidth="4.5" strokeLinejoin="round" />
+                    <line className="logo-spine-divider" x1="68" y1="46" x2="68" y2="154" stroke="#2E1065" strokeWidth="4.5" strokeLinecap="round" />
+                    <g className="logo-face">
+                      <g className="logo-eye eye-left"><circle cx="96" cy="94" r="6" fill="#2E1065" /></g>
+                      <g className="logo-eye eye-right"><circle cx="124" cy="94" r="6" fill="#2E1065" /></g>
+                      <path className="logo-smile" d="M 96,108 C 96,121 124,121 124,108" fill="none" stroke="#2E1065" strokeWidth="3.5" strokeLinecap="round" />
+                    </g>
+                  </g>
+                </svg>
+                <span className={darkMode ? "text-white" : "text-[#1D1055]"} style={{ fontFamily: "'Outfit', sans-serif" }}>Acadesk</span>
               </h1>
             </div>
 
@@ -1390,7 +1593,8 @@ export default function Home() {
                   {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
                 </button>
                 <button
-                  onClick={() => {
+                  onClick={async () => {
+                    await firebaseSignOut();
                     localStorage.removeItem("syncspace_email");
                     setCurrentPage("landing");
                   }}
@@ -1457,34 +1661,13 @@ export default function Home() {
                       <div className="absolute -bottom-[20%] -right-[10%] w-[220px] h-[220px] rounded-full bg-emerald-500/8 blur-2xl float-glow-2" />
                     </div>
 
-                    <div className="flex-1 flex flex-col gap-4 relative z-10">
+                    <div className="flex-1 flex flex-col gap-5 relative z-10">
                       <div className="flex items-center gap-2">
                         <span className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-500"><Sparkles className="w-5 h-5" /></span>
                         <h2 className="text-xl font-bold font-sans tracking-wide">Academic Timetable Forecast</h2>
                       </div>
-                      <p className={`text-sm leading-relaxed max-w-xl ${darkMode ? "text-slate-400" : "text-slate-600"}`}>
-                        {collisionCount > 0 
-                          ? `Attention! You have ${collisionCount} deadline collision(s) occurring this week. I recommend adjusting your focus study blocks to buffer early submissions.`
-                          : "Looking good! Your academic load is highly balanced for the next 7 days. Use your weekend focus blocks to prepare ahead."}
-                      </p>
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 max-w-xl">
-                        <div className={`p-4 rounded-2xl border text-xs font-semibold flex items-start gap-2.5 flex-1 relative overflow-hidden transition-all duration-500 shadow-inner ai-recommendation-pulse ${
-                          darkMode ? "bg-black/45 border-indigo-500/25 text-indigo-200 shadow-indigo-500/5 hover:border-indigo-500/40" : "bg-white/70 border-indigo-200 text-indigo-700 shadow-indigo-500/5 hover:border-indigo-500/35"
-                        }`}>
-                          {/* Floating tiny particles in the recommendation card */}
-                          <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                            <span className="absolute w-1 h-1 bg-indigo-400 rounded-full opacity-30 float-particle-1" />
-                            <span className="absolute w-1.5 h-1.5 bg-emerald-400 rounded-full opacity-20 float-particle-2" style={{ animationDelay: "1.5s" }} />
-                            <span className="absolute w-1 h-1 bg-cyan-400 rounded-full opacity-45 float-particle-3" style={{ animationDelay: "3s" }} />
-                          </div>
-
-                          <div className="absolute top-0 right-0 w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_8px_#6366f1] glow-pulse-indicator m-2.5" />
-                          <Zap className="w-4 h-4 text-amber-500 flex-shrink-0 animate-bounce relative z-10" />
-                          <span className="relative z-10 font-mono leading-relaxed">
-                            <strong>AI Strategy:</strong>{" "}
-                            {displayedRecommendation}
-                          </span>
-                        </div>
+                      
+                      <div className="flex items-center gap-4 max-w-xl">
                         <button
                           onClick={triggerStressRelief}
                           className="neon-gradient-btn rounded-xl h-11 px-5 text-xs font-bold text-white cursor-pointer transition-all border-none flex-shrink-0 relative overflow-hidden flex items-center gap-1.5"
@@ -1496,19 +1679,29 @@ export default function Home() {
                       </div>
                     </div>
 
-                    <div className="flex flex-col items-center justify-center p-5 rounded-2xl border bg-black/10 dark:bg-black/25 border-white/[0.04] min-w-[190px] text-center relative z-10">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">Workload Forecast</span>
+                    {/* Futuristic Floating Workload Forecast Widget (Integrated AI Insight Component) */}
+                    <div className="flex flex-col items-center justify-center p-5 rounded-3xl bg-transparent backdrop-blur-[1px] border border-indigo-950/10 dark:border-white/[0.08] shadow-[0_8px_32px_0_rgba(99,102,241,0.01)] min-w-[190px] text-center relative z-10 select-none transition-all duration-500 hover:scale-[1.02]">
+                      <span className={`text-[10px] font-extrabold uppercase tracking-[0.15em] ${darkMode ? "text-slate-400" : "text-slate-500"} mb-4`}>
+                        Workload Forecast
+                      </span>
                       
-                      {/* High Fidelity Apple/Stripe Radial Ring Widget */}
-                      <div className="relative w-22 h-22 flex items-center justify-center mb-3">
-                        <div className="absolute inset-0 rounded-full border border-dashed border-indigo-500/30 rotate-slow" />
+                      {/* Radial Progress widget with glowing rings and animations */}
+                      <div className="relative w-22 h-22 flex items-center justify-center mb-4">
+                        {/* Subtle glowing ring backdrop */}
+                        <div className="absolute w-16 h-16 rounded-full bg-gradient-to-tr from-indigo-500/15 to-emerald-500/15 blur-[6px] opacity-80 pointer-events-none" />
                         
-                        <svg className="w-18 h-18 transform -rotate-90">
+                        {/* Glowing ring around the progress circle */}
+                        <div className="absolute w-[68px] h-[68px] rounded-full border border-indigo-500/25 dark:border-indigo-400/35 shadow-[0_0_12px_rgba(99,102,241,0.2)] dark:shadow-[0_0_18px_rgba(99,102,241,0.3)] animate-pulse pointer-events-none z-0" />
+                        
+                        {/* Dashed outer accent ring */}
+                        <div className="absolute inset-0 rounded-full border border-dashed border-indigo-500/20 dark:border-indigo-400/25 rotate-slow pointer-events-none" />
+                        
+                        <svg className="w-18 h-18 transform -rotate-90 relative z-10 pointer-events-none">
                           <circle 
                             cx="36" 
                             cy="36" 
                             r="30" 
-                            stroke={darkMode ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"} 
+                            stroke={darkMode ? "rgba(255,255,255,0.06)" : "rgba(99,102,241,0.05)"} 
                             strokeWidth="4" 
                             fill="transparent" 
                           />
@@ -1532,12 +1725,18 @@ export default function Home() {
                           </defs>
                         </svg>
                         
-                        <div className="absolute flex flex-col items-center justify-center">
-                          <span className="text-xl font-black text-indigo-500"><AnimatedCounter value={radialProgress} />%</span>
+                        {/* Lightweight percentage value text */}
+                        <div className="absolute flex flex-col items-center justify-center z-20 pointer-events-none">
+                          <span className="text-xl font-black text-indigo-500 dark:text-indigo-400">
+                            <AnimatedCounter value={radialProgress} />%
+                          </span>
                         </div>
                       </div>
 
-                      <span className={`text-[9px] px-2.5 py-1 rounded font-bold uppercase transition-all duration-500 shadow-sm border ${stressBg} ${stressColor} ${stressBorder}`}>{stressLevel} Stress</span>
+                      {/* Stress status badge with breathing animation */}
+                      <span className={`text-[9px] px-2.5 py-1 rounded font-bold uppercase transition-all duration-500 shadow-sm border badge-breathe ${stressBg} ${stressColor} ${stressBorder}`}>
+                        {stressLevel} Stress
+                      </span>
                     </div>
                   </section>
 
@@ -1560,7 +1759,7 @@ export default function Home() {
                       // Calculate stress dynamic style for the Stress Index card
                       let cardStressClass = "";
                       if (card.title === "Stress Index") {
-                        if (stressLevel === "Zen (AI Optimized)") {
+                        if (stressLevel === "Zen") {
                           cardStressClass = "breathe-card border-emerald-500/45 shadow-[0_0_15px_rgba(16,185,129,0.15)]";
                         } else if (stressLevel === "Critical") {
                           cardStressClass = "stress-critical-shake border-rose-600/60 shadow-[0_0_15px_rgba(225,29,72,0.15)]";
@@ -2080,7 +2279,7 @@ export default function Home() {
                         <span><strong>AI Insight:</strong> {leastBusy.name} currently has the lowest active workload ({leastBusy.tasksCount} tasks). Consider allocating upcoming presentation prep to them.</span>
                       </div>
                     </div>
-                    <div className="flex flex-col items-center p-6 rounded-2xl border bg-black/10 dark:bg-black/25 border-white/[0.04] min-w-[200px] text-center">
+                    <div className="flex flex-col items-center p-6 rounded-2xl border bg-white dark:bg-black/25 border-slate-200/50 dark:border-white/[0.04] min-w-[200px] text-center">
                       <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Collaboration Score</span>
                       <span className="text-4xl font-extrabold text-[#38bdf8] mt-2 mb-1">92/100</span>
                       <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">Highly Synced</span>
@@ -2388,7 +2587,7 @@ export default function Home() {
                         <span className="px-3 py-1 rounded-xl border dark:border-white/[0.06]">Submissions Pending: {submissionsCount}</span>
                       </div>
                     </div>
-                    <div className="flex flex-col items-center p-6 rounded-2xl border bg-black/10 dark:bg-black/25 border-white/[0.04] min-w-[200px] text-center">
+                    <div className="flex flex-col items-center p-6 rounded-2xl border bg-white dark:bg-black/25 border-slate-200/50 dark:border-white/[0.04] min-w-[200px] text-center">
                       <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Health Score</span>
                       <span className="text-4xl font-extrabold text-emerald-500 mt-2 mb-1">{semesterHealth}%</span>
                       <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">Optimal Stability</span>
@@ -2461,9 +2660,34 @@ export default function Home() {
                 darkMode ? "bg-[#0d0c18] border-r border-white/[0.06]" : "bg-white border-r border-slate-200"
               }`}>
                 <div className="flex justify-between items-center mb-8 pb-4 border-b dark:border-white/[0.06] border-slate-200">
-                  <h1 className="text-lg font-bold uppercase flex items-center">
-                    <span className={darkMode ? "text-[#38bdf8]" : "text-[#0c4786]"}>SYNC</span>
-                    <span className={darkMode ? "text-[#10b981]" : "text-[#1fa291]"}>SPACE</span>
+                  <h1 className="text-lg font-bold uppercase flex items-center gap-2 select-none">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" className="w-5 h-5 acadesk-logo-svg pointer-events-none">
+                      <defs>
+                        <linearGradient id="miniBookCoverGradMobile" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#8B5CF6" />
+                          <stop offset="100%" stopColor="#6D28D9" />
+                        </linearGradient>
+                        <linearGradient id="miniBookSpineGradMobile" x1="0%" y1="0%" x2="100%" y2="0%">
+                          <stop offset="0%" stopColor="#5B21B6" />
+                          <stop offset="100%" stopColor="#7C3AED" />
+                        </linearGradient>
+                      </defs>
+                      <g className="logo-group">
+                        <path className="logo-pages-3" d="M 66,46 C 80,30 120,30 144,46 Z" fill="#E2E8F0" stroke="#2E1065" strokeWidth="3" />
+                        <path className="logo-pages-2" d="M 67,46 C 80,34 120,34 145,46 Z" fill="#CBD5E1" stroke="#2E1065" strokeWidth="3" />
+                        <path className="logo-pages-1" d="M 68,46 C 80,38 120,38 146,46 Z" fill="#F8FAFC" stroke="#2E1065" strokeWidth="3" />
+                        <path className="logo-spine-fill" d="M 68,46 L 56,46 C 50,46 50,52 50,56 L 50,144 C 50,148 50,154 56,154 L 68,154 Z" fill="url(#miniBookSpineGradMobile)" />
+                        <path className="logo-cover-fill" d="M 68,46 L 144,46 Q 152,46 152,54 L 152,146 Q 152,154 144,154 L 68,154 Z" fill="url(#miniBookCoverGradMobile)" />
+                        <path className="logo-outline" d="M 68,46 L 144,46 Q 152,46 152,54 L 152,146 Q 152,154 144,154 L 56,154 Q 50,154 50,144 L 50,56 Q 50,46 56,46 Z" fill="none" stroke="#2E1065" strokeWidth="4.5" strokeLinejoin="round" />
+                        <line className="logo-spine-divider" x1="68" y1="46" x2="68" y2="154" stroke="#2E1065" strokeWidth="4.5" strokeLinecap="round" />
+                        <g className="logo-face">
+                          <g className="logo-eye eye-left"><circle cx="96" cy="94" r="6" fill="#2E1065" /></g>
+                          <g className="logo-eye eye-right"><circle cx="124" cy="94" r="6" fill="#2E1065" /></g>
+                          <path className="logo-smile" d="M 96,108 C 96,121 124,121 124,108" fill="none" stroke="#2E1065" strokeWidth="3.5" strokeLinecap="round" />
+                        </g>
+                      </g>
+                    </svg>
+                    <span className={darkMode ? "text-white" : "text-[#1D1055]"} style={{ fontFamily: "'Outfit', sans-serif" }}>Acadesk</span>
                   </h1>
                   <button onClick={() => setMobileMenuOpen(false)} className="p-1 rounded-lg border-none hover:bg-slate-200 dark:hover:bg-white/5"><X className="w-5 h-5" /></button>
                 </div>
@@ -2498,7 +2722,15 @@ export default function Home() {
                   <button onClick={() => setDarkMode(!darkMode)} className={`p-2 rounded-xl border flex items-center justify-center cursor-pointer ${darkMode ? "bg-slate-900 border-slate-800 text-yellow-400" : "bg-white border-slate-200 text-slate-600"}`}>
                     {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
                   </button>
-                  <button onClick={() => { localStorage.removeItem("syncspace_email"); setCurrentPage("landing"); setMobileMenuOpen(false); }} className="text-xs font-bold text-rose-500 hover:underline bg-transparent border-none cursor-pointer">
+                  <button 
+                    onClick={async () => { 
+                      await firebaseSignOut(); 
+                      localStorage.removeItem("syncspace_email"); 
+                      setCurrentPage("landing"); 
+                      setMobileMenuOpen(false); 
+                    }} 
+                    className="text-xs font-bold text-rose-500 hover:underline bg-transparent border-none cursor-pointer"
+                  >
                     Log Out
                   </button>
                 </div>
