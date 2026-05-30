@@ -2086,21 +2086,82 @@ export default function Home() {
                         </div>
                       </div>
                       <div className="flex flex-col gap-5">
-                        {teamMembers.map(member => {
+                        {teamMembers.map((member, mIdx) => {
                           const workloadPercent = Math.round((member.tasksCount / member.capacity) * 100);
                           return (
-                            <div key={member.name} className="flex flex-col gap-2">
-                              <div className="flex justify-between items-center text-xs font-bold">
-                                <span>{member.name}</span>
-                                <span className="text-slate-400">{member.tasksCount} Tasks</span>
+                            <div key={member.name} className="flex flex-col gap-3.5 p-4 rounded-2xl border dark:border-white/[0.03] dark:bg-black/10 bg-slate-50/50">
+                              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                                <span className="flex items-center gap-2 text-xs font-bold">
+                                  <span className={`w-2 h-2 rounded-full ${
+                                    member.availability === "Highly Busy" ? "bg-rose-500 animate-pulse" : member.availability === "Busy" ? "bg-amber-500 animate-pulse" : "bg-emerald-500"
+                                  }`} />
+                                  <span>{member.name}</span>
+                                </span>
+                                
+                                <div className="flex items-center gap-4">
+                                  {/* Active Tasks Adjuster */}
+                                  <div className="flex items-center gap-1 text-[11px] font-semibold text-slate-400">
+                                    <span>Tasks:</span>
+                                    <button 
+                                      onClick={() => {
+                                        const newMembers = [...teamMembers];
+                                        newMembers[mIdx].tasksCount = Math.max(0, newMembers[mIdx].tasksCount - 1);
+                                        const ratio = newMembers[mIdx].tasksCount / newMembers[mIdx].capacity;
+                                        newMembers[mIdx].availability = ratio > 0.8 ? "Highly Busy" : ratio > 0.5 ? "Busy" : "Available";
+                                        setTeamMembers(newMembers);
+                                      }}
+                                      className="w-5 h-5 rounded bg-slate-200 dark:bg-slate-800 text-xs font-bold border-none cursor-pointer flex items-center justify-center hover:scale-105 active:scale-95 text-slate-800 dark:text-slate-200"
+                                      type="button"
+                                    >-</button>
+                                    <span className="w-5 text-center text-sm font-extrabold text-slate-800 dark:text-white">{member.tasksCount}</span>
+                                    <button 
+                                      onClick={() => {
+                                        const newMembers = [...teamMembers];
+                                        newMembers[mIdx].tasksCount = Math.min(20, newMembers[mIdx].tasksCount + 1);
+                                        const ratio = newMembers[mIdx].tasksCount / newMembers[mIdx].capacity;
+                                        newMembers[mIdx].availability = ratio > 0.8 ? "Highly Busy" : ratio > 0.5 ? "Busy" : "Available";
+                                        setTeamMembers(newMembers);
+                                      }}
+                                      className="w-5 h-5 rounded bg-slate-200 dark:bg-slate-800 text-xs font-bold border-none cursor-pointer flex items-center justify-center hover:scale-105 active:scale-95 text-slate-800 dark:text-slate-200"
+                                      type="button"
+                                    >+</button>
+                                  </div>
+
+                                  {/* Capacity Adjuster */}
+                                  <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-400 border-l dark:border-white/5 border-slate-200 pl-3">
+                                    <span>Limit:</span>
+                                    <input 
+                                      type="number"
+                                      min="1"
+                                      max="25"
+                                      value={member.capacity}
+                                      onChange={(e) => {
+                                        const val = Math.max(1, parseInt(e.target.value) || 1);
+                                        const newMembers = [...teamMembers];
+                                        newMembers[mIdx].capacity = val;
+                                        const ratio = newMembers[mIdx].tasksCount / val;
+                                        newMembers[mIdx].availability = ratio > 0.8 ? "Highly Busy" : ratio > 0.5 ? "Busy" : "Available";
+                                        setTeamMembers(newMembers);
+                                      }}
+                                      className="w-11 h-6 px-1.5 rounded border text-xs text-center font-extrabold focus:outline-none dark:bg-black/40 dark:border-white/[0.08] focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500 text-slate-800 dark:text-white"
+                                    />
+                                  </div>
+                                </div>
                               </div>
-                              <div className="w-full h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                              
+                              <div className="w-full h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden relative">
                                 <div 
                                   className={`h-full rounded-full transition-all duration-500 ${
                                     member.availability === "Highly Busy" ? "bg-rose-500" : member.availability === "Busy" ? "bg-amber-500" : "bg-emerald-500"
                                   }`} 
-                                  style={{ width: `${workloadPercent}%` }} 
+                                  style={{ width: `${Math.min(100, workloadPercent)}%` }} 
                                 />
+                              </div>
+                              <div className="flex justify-between items-center text-[10px] text-slate-400 font-semibold uppercase tracking-wider">
+                                <span>Capacity Load: {workloadPercent}%</span>
+                                <span className={
+                                  member.availability === "Highly Busy" ? "text-rose-500" : member.availability === "Busy" ? "text-amber-500" : "text-emerald-500"
+                                }>{member.availability}</span>
                               </div>
                             </div>
                           );
