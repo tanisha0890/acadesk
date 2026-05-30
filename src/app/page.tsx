@@ -132,12 +132,7 @@ const INITIAL_DEADLINES: Deadline[] = [
   { id: "dl-5", courseCode: "CS301", title: "Software Engineering Presentation", date: "2026-06-07", time: "02:00 PM", category: "Project", priority: "Normal", completed: false },
 ];
 
-const INITIAL_TEAM_MEMBERS: TeamMember[] = [
-  { name: "Swarnava", tasksCount: 8, availability: "Highly Busy", capacity: 10 },
-  { name: "Rahul", tasksCount: 3, availability: "Available", capacity: 8 },
-  { name: "Priya", tasksCount: 5, availability: "Busy", capacity: 8 },
-  { name: "Ankit", tasksCount: 2, availability: "Available", capacity: 8 },
-];
+const INITIAL_TEAM_MEMBERS: TeamMember[] = [];
 
 const INITIAL_CHAT: ChatMessage[] = [
   { sender: "ai", text: "Hello! I am your SyncSpace AI Academic Planner Assistant. Ask me anything about your timetable, upcoming deadline collisions, or workload balancing.", timestamp: new Date().toLocaleTimeString() }
@@ -359,6 +354,8 @@ export default function Home() {
 
   // Peer Invite state (Team Tab)
   const [invitedEmail, setInvitedEmail] = useState("");
+  const [inviteName, setInviteName] = useState("");
+  const [inviteSuccessMsg, setInviteSuccessMsg] = useState("");
 
   // AI Assistant Tab state
   const [assistantInput, setAssistantInput] = useState("");
@@ -421,7 +418,9 @@ export default function Home() {
   const rawCollisions = findCollisions(deadlines);
   const collisions = isOptimized ? [] : rawCollisions;
   const collisionCount = collisions.length;
-  const leastBusy = teamMembers.reduce((min, cur) => cur.tasksCount < min.tasksCount ? cur : min, teamMembers[0]);
+  const leastBusy = teamMembers.length > 0 
+    ? teamMembers.reduce((min, cur) => cur.tasksCount < min.tasksCount ? cur : min, teamMembers[0]) 
+    : { name: "No one", tasksCount: 0, availability: "Available", capacity: 10 };
   const criticalCount = isOptimized ? 0 : incompleteDeadlines.filter(d => d.priority === "Critical").length;
   const semesterHealth = isOptimized ? 95 : Math.min(100, Math.max(30, 92 - criticalCount * 2.5));
 
@@ -438,6 +437,21 @@ export default function Home() {
     window.addEventListener("mousemove", handleMouseMove);
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, []);
+
+  // Update "You" in team list when loggedInEmail or tasks changes (Safe Placement)
+  useEffect(() => {
+    const userName = loggedInEmail.split("@")[0];
+    const capitalizedName = userName.charAt(0).toUpperCase() + userName.slice(1);
+    setTeamMembers(prev => {
+      const existsIdx = prev.findIndex(m => m.name.includes("(You)"));
+      if (existsIdx >= 0) {
+        const next = [...prev];
+        next[existsIdx] = { ...next[existsIdx], name: `${capitalizedName} (You)`, tasksCount: activeTasksCount };
+        return next;
+      }
+      return [{ name: `${capitalizedName} (You)`, tasksCount: activeTasksCount, availability: "Available", capacity: 10 }, ...prev];
+    });
+  }, [loggedInEmail, activeTasksCount]);
 
   // 4. APPLE-STYLE HIGH FIDELITY SEQUENCER DRAWING & MORPHING ANIMATION LOOP
   useEffect(() => {
@@ -2201,6 +2215,91 @@ export default function Home() {
                           <strong>AI Suggestion:</strong> Use the <strong>Saturday Morning</strong> focus block for Advanced Algorithms preparation to decrease your upcoming midterm stress index by 15%.
                         </div>
                       </div>
+                    </div>
+
+                    {/* Invite Peer Widget */}
+                    <div className={`rounded-3xl p-6 border flex flex-col gap-5 ${
+                      darkMode ? "bg-[#0d0c18]/70 border-white/[0.06]" : "bg-white border-slate-200 shadow-sm"
+                    }`}>
+                      <div className="flex justify-between items-center border-b dark:border-white/[0.04] pb-4">
+                        <div className="flex items-center gap-2">
+                          <span className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-500"><Mail className="w-5 h-5" /></span>
+                          <h3 className="text-lg font-bold font-sans">Invite Peer</h3>
+                        </div>
+                      </div>
+                      
+                      <form 
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          if (!inviteName.trim() || !invitedEmail.trim()) return;
+                          
+                          // Add new peer dynamically to workload balance list
+                          const newMember: TeamMember = {
+                            name: inviteName.trim(),
+                            tasksCount: 0,
+                            availability: "Available",
+                            capacity: 8
+                          };
+                          setTeamMembers(prev => [...prev, newMember]);
+                          
+                          // Append AI Chat notification
+                          setChatHistory(prev => [
+                            ...prev,
+                            {
+                              id: Math.random().toString(),
+                              sender: "ai",
+                              text: `New peer **${inviteName.trim()}** has been successfully invited and synced to your assignment workspace.`,
+                              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                            }
+                          ]);
+
+                          // Show success notification
+                          setInviteSuccessMsg(`Invitation sent to ${invitedEmail.trim()}`);
+                          setTimeout(() => setInviteSuccessMsg(""), 3500);
+
+                          // Reset inputs
+                          setInviteName("");
+                          setInvitedEmail("");
+                        }}
+                        className="flex flex-col gap-3 font-sans text-xs"
+                      >
+                        {inviteSuccessMsg && (
+                          <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-semibold tracking-wide animate-pulse">
+                            {inviteSuccessMsg}
+                          </div>
+                        )}
+
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Peer Name</label>
+                          <input 
+                            type="text" 
+                            required 
+                            value={inviteName} 
+                            onChange={(e) => setInviteName(e.target.value)} 
+                            placeholder="Rahul Sharma" 
+                            className="h-10 px-3 rounded-xl border text-xs focus:outline-none dark:bg-black/30 dark:border-white/[0.08] focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all text-slate-800 dark:text-white"
+                          />
+                        </div>
+
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Email Address</label>
+                          <input 
+                            type="email" 
+                            required 
+                            value={invitedEmail} 
+                            onChange={(e) => setInvitedEmail(e.target.value)} 
+                            placeholder="rahul@university.edu" 
+                            className="h-10 px-3 rounded-xl border text-xs focus:outline-none dark:bg-black/30 dark:border-white/[0.08] focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all text-slate-800 dark:text-white"
+                          />
+                        </div>
+
+                        <button 
+                          type="submit" 
+                          className="w-full h-10 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-all active:scale-98 cursor-pointer mt-2"
+                        >
+                          Send Collaboration Invite
+                        </button>
+                      </form>
                     </div>
                   </section>
                 </div>
