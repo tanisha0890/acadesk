@@ -187,6 +187,14 @@ export default function Home() {
   const [darkMode, setDarkMode] = useState<boolean>(true);
   const [loggedInEmail, setLoggedInEmail] = useState<string>("surajchoudhary5002@gmail.com");
   const [productivityScore, setProductivityScore] = useState<number>(94);
+  const [customGeminiKey, setCustomGeminiKey] = useState<string>("");
+
+  const handleSetCustomGeminiKey = (key: string) => {
+    setCustomGeminiKey(key);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("syncspace_gemini_key", key);
+    }
+  };
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mouseOffset, setMouseOffset] = useState({ x: 0, y: 0 });
@@ -669,6 +677,8 @@ export default function Home() {
       }
       if (savedScore) setProductivityScore(Number(savedScore));
       if (savedChat) setChatHistory(JSON.parse(savedChat));
+      const savedGeminiKey = localStorage.getItem("syncspace_gemini_key");
+      if (savedGeminiKey) setCustomGeminiKey(savedGeminiKey);
     }
   }, []);
 
@@ -893,7 +903,7 @@ export default function Home() {
     setChatHistory(withLoading);
 
     try {
-      const apiKey = "AIzaSyCKF6Jl4HQqopRQZC9-S7oQ7A2RVRvNA2M";
+      const apiKey = customGeminiKey.trim() || process.env.NEXT_PUBLIC_GEMINI_API_KEY || "AIzaSyCKF6Jl4HQqopRQZC9-S7oQ7A2RVRvNA2M";
       const systemPrompt = `You are the SyncSpace AI Academic Assistant. Your job is to help the student manage their timetable, deadlines, exams, and team coordination.
 You have the power to automate scheduling. If the user wants to schedule or add an exam, quiz, test, project, assignment, submission, or meeting, you MUST respond with a JSON object.
 
@@ -2695,7 +2705,7 @@ CRITICAL: Return ONLY the JSON object. Do not include markdown block formatting,
                   <div className={`rounded-3xl border flex flex-col h-full overflow-hidden ${
                     darkMode ? "bg-[#0d0c18]/70 border-white/[0.06] backdrop-blur-md" : "bg-white border-slate-200 shadow-sm"
                   }`}>
-                    <div className="p-5 border-b dark:border-white/[0.04] border-slate-100 flex items-center justify-between">
+                    <div className="p-5 border-b dark:border-white/[0.04] border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div className="flex items-center gap-2.5">
                         <span className="p-2 rounded bg-indigo-500/10 text-indigo-500"><Bot className="w-5 h-5" /></span>
                         <div>
@@ -2704,6 +2714,18 @@ CRITICAL: Return ONLY the JSON object. Do not include markdown block formatting,
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" /> Live Context Active
                           </span>
                         </div>
+                      </div>
+                      
+                      {/* Optional Gemini API Key input field */}
+                      <div className="flex items-center gap-2 max-w-xs self-end sm:self-auto w-full sm:w-auto">
+                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap">Gemini Key:</span>
+                        <input 
+                          type="password"
+                          placeholder={customGeminiKey ? "••••••••••••••••" : "Paste Gemini API Key..."}
+                          value={customGeminiKey}
+                          onChange={(e) => handleSetCustomGeminiKey(e.target.value)}
+                          className="h-8 px-2.5 rounded-lg border text-[10px] focus:outline-none dark:bg-black/45 dark:border-white/[0.08] dark:text-slate-200 bg-slate-50 border-slate-200 text-slate-700 w-full sm:w-[170px]"
+                        />
                       </div>
                     </div>
 
