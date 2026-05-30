@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to Acadesk</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --purple-primary: #7C3AED;
+            --purple-hover: #6D28D9;
+            --purple-light: #F3E8FF;
+            --purple-glow: rgba(124, 58, 237, 0.18);
+            --text-dark: #1E1B4B; /* Rich deep indigo-dark for high contrast and modern look */
+            --text-muted: #4F46E5; /* Indigo-muted text */
+            --text-light: #9CA3AF;
+            --card-bg: rgba(255, 255, 255, 0.82);
+            --bg-gradient: radial-gradient(125% 125% at 50% 10%, #FAF5FF 0%, #F5F3FF 40%, #EDE9FE 100%);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: var(--bg-gradient);
+            color: var(--text-dark);
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        /* --- CARD CONTAINER (MORPHS ON LOAD) --- */
+        .app-container {
+            position: relative;
+            width: 340px;
+            min-height: 320px;
+            background: var(--card-bg);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            box-shadow: 0 20px 50px rgba(124, 58, 237, 0.08), 
+                        0 0 0 1px rgba(124, 58, 237, 0.04);
+            border-radius: 32px;
+            padding: 3rem 2.5rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        /* Morphing target state when loading finishes */
+        .app-container.loaded {
+            width: 440px;
+            min-height: 560px;
+            justify-content: flex-start;
+            padding: 2.5rem 2.5rem;
+            box-shadow: 0 30px 60px rgba(124, 58, 237, 0.12),
+                        0 0 0 1px rgba(124, 58, 237, 0.04);
+        }
+
+        /* --- LOGO AND TYPOGRAPHY --- */
+        .logo-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: auto;
+            margin-bottom: auto;
+            transform: scale(1.15);
+            transition: transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1),
+                        margin 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .logo-wrapper svg {
+            width: 140px;
+            height: 140px;
+            transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1),
+                        height 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .logo-text {
+            font-family: 'Outfit', sans-serif;
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-top: 0.75rem;
+            opacity: 0;
+            letter-spacing: -0.5px;
+            animation: textEntrance 1s cubic-bezier(0.16, 1, 0.3, 1) forwards 0.4s;
+            transition: transform 0.8s ease, font-size 0.8s ease, margin-top 0.8s ease;
+        }
+
+        /* Shift & scale down logo when page loads */
+        .app-container.loaded .logo-wrapper {
+            margin-top: 0;
+            margin-bottom: 1.25rem;
+            transform: scale(0.9);
+        }
+
+        .app-container.loaded .logo-wrapper svg {
+            width: 80px;
+            height: 80px;
+        }
+
+        .app-container.loaded .logo-text {
+            font-size: 1.6rem;
+            margin-top: 0.25rem;
+        }
+
+        /* --- LOADING BAR --- */
+        .loading-container {
+            width: 200px;
+            height: 6px;
+            background-color: rgba(124, 58, 237, 0.1);
+            border-radius: 10px;
+            margin-top: 2rem;
+            margin-bottom: auto;
+            overflow: hidden;
+            opacity: 1;
+            transition: opacity 0.4s ease, height 0.4s ease, margin 0.4s ease;
+        }
+
+        .loading-bar {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #7C3AED, #A78BFA);
+            border-radius: 10px;
+            box-shadow: 0 0 8px rgba(124, 58, 237, 0.4);
+            animation: fillProgress 2.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+        .app-container.loaded .loading-container {
+            opacity: 0;
+            height: 0;
+            margin: 0;
+            pointer-events: none;
+        }
+
+        /* --- LOGIN CONTENT (FADES IN) --- */
+        .login-content {
+            width: 100%;
+            opacity: 0;
+            transform: translateY(20px);
+            pointer-events: none;
+            max-height: 0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: opacity 0.6s ease,
+                        transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1),
+                        max-height 0.6s ease;
+        }
+
+        .app-container.loaded .login-content {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+            max-height: 380px;
+        }
+
+        .login-content h2 {
+            font-family: 'Outfit', sans-serif;
+            color: var(--text-dark);
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        /* Form elements */
+        .form-group {
+            width: 100%;
+            margin-bottom: 1.25rem;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 0.9rem 1.1rem;
+            border: 1.5px solid rgba(124, 58, 237, 0.15);
+            background: rgba(255, 255, 255, 0.6);
+            border-radius: 14px;
+            outline: none;
+            font-size: 0.95rem;
+            font-family: 'Inter', sans-serif;
+            color: var(--text-dark);
+            transition: all 0.3s ease;
+        }
+
+        .form-group input::placeholder {
+            color: var(--text-light);
+        }
+
+        .form-group input:focus {
+            border-color: var(--purple-primary);
+            background: #ffffff;
+            box-shadow: 0 0 0 4px var(--purple-glow);
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 0.9rem;
+            background: linear-gradient(135deg, var(--purple-primary) 0%, #6D28D9 100%);
+            color: white;
+            border: none;
+            border-radius: 14px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 10px 20px rgba(124, 58, 237, 0.15);
+            transition: all 0.3s ease;
+            margin-top: 0.5rem;
+        }
+
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 24px rgba(124, 58, 237, 0.25);
+            filter: brightness(1.05);
+        }
+
+        .login-btn:active {
+            transform: translateY(0);
+            box-shadow: 0 6px 12px rgba(124, 58, 237, 0.15);
+        }
+
+        /* --- FINE-TUNED CSS KEYFRAME ANIMATIONS --- */
+        
+        /* Subtle float idle animation to make logo feel alive */
+        @keyframes logoFloat {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-5px) rotate(1deg); }
+        }
+
+        .logo-wrapper svg {
+            animation: logoFloat 4.5s ease-in-out infinite;
+            transform-origin: center;
+        }
+
+        /* Elastic spring zoom logo entrance */
+        @keyframes logoEntrance {
+            0% {
+                transform: scale(0) rotate(-15deg);
+                opacity: 0;
+            }
+            65% {
+                transform: scale(1.12) rotate(4deg);
+                opacity: 1;
+            }
+            85% {
+                transform: scale(0.95) rotate(-1deg);
+            }
+            100% {
+                transform: scale(1) rotate(0deg);
+                opacity: 1;
+            }
+        }
+
+        .logo-group {
+            transform-origin: 100px 100px;
+            animation: logoEntrance 1.3s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+        }
+
+        /* Page slide-out animation */
+        @keyframes pageSlide {
+            0% {
+                transform: translateY(12px) scaleX(0.9);
+                opacity: 0;
+            }
+            100% {
+                transform: translateY(0) scaleX(1);
+                opacity: 1;
+            }
+        }
+        
+        .logo-pages-1 {
+            transform-origin: 100px 46px;
+            animation: pageSlide 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards 0.3s;
+            opacity: 0;
+        }
+        .logo-pages-2 {
+            transform-origin: 100px 46px;
+            animation: pageSlide 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards 0.2s;
+            opacity: 0;
+        }
+        .logo-pages-3 {
+            transform-origin: 100px 46px;
+            animation: pageSlide 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards 0.1s;
+            opacity: 0;
+        }
+
+        /* Double-eye blink loop */
+        @keyframes eyeBlink {
+            0%, 96%, 100% { transform: scaleY(1); }
+            98% { transform: scaleY(0.1); }
+        }
+
+        .eye-left {
+            transform-origin: 96px 94px;
+            animation: eyeBlink 5s ease-in-out infinite;
+        }
+
+        .eye-right {
+            transform-origin: 124px 94px;
+            animation: eyeBlink 5s ease-in-out infinite;
+        }
+
+        /* Smile path draw-in */
+        @keyframes drawSmile {
+            from { stroke-dashoffset: 45; }
+            to { stroke-dashoffset: 0; }
+        }
+
+        .logo-smile {
+            stroke-dasharray: 45;
+            stroke-dashoffset: 45;
+            animation: drawSmile 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards 0.7s;
+        }
+
+        /* Soft blush glow pulse */
+        @keyframes blushPulse {
+            0%, 100% { transform: scale(1); opacity: 0.35; }
+            50% { transform: scale(1.15); opacity: 0.55; }
+        }
+
+        .blush-left {
+            transform-origin: 86px 106px;
+            animation: blushPulse 3s ease-in-out infinite;
+        }
+
+        .blush-right {
+            transform-origin: 134px 106px;
+            animation: blushPulse 3s ease-in-out infinite;
+        }
+
+        /* Text slide-up tracking entrance */
+        @keyframes textEntrance {
+            0% {
+                opacity: 0;
+                letter-spacing: -2px;
+                transform: translateY(12px);
+            }
+            100% {
+                opacity: 1;
+                letter-spacing: -0.5px;
+                transform: translateY(0);
+            }
+        }
+
+        /* Progress fill */
+        @keyframes fillProgress {
+            to { width: 100%; }
+        }
+
+        /* Accessibility: respect preferences for reduced motion */
+        @media (prefers-reduced-motion: reduce) {
+            .logo-wrapper svg,
+            .logo-group,
+            .logo-eye,
+            .logo-blush,
+            .logo-smile,
+            .logo-pages-1,
+            .logo-pages-2,
+            .logo-pages-3 {
+                animation: none !important;
+                transform: none !important;
+                stroke-dashoffset: 0 !important;
+                opacity: 1 !important;
+            }
+            .logo-text {
+                animation: none !important;
+                opacity: 1 !important;
+                letter-spacing: -0.5px !important;
+                transform: none !important;
+            }
+            .app-container {
+                transition: none !important;
+            }
+            .login-content {
+                transition: none !important;
+                transform: none !important;
+            }
+            .loading-bar {
+                animation-duration: 0.5s !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container" id="appContainer">
+        
+        <!-- Shared Logo Container -->
+        <div class="logo-wrapper">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" class="acadesk-logo-svg">
+                <defs>
+                    <!-- Gradient for book cover -->
+                    <linearGradient id="bookCoverGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#8B5CF6" /> <!-- Vibrant light purple -->
+                        <stop offset="100%" stop-color="#6D28D9" /> <!-- Deep rich purple -->
+                    </linearGradient>
+                    <!-- Gradient for book spine -->
+                    <linearGradient id="bookSpineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stop-color="#5B21B6" />
+                        <stop offset="100%" stop-color="#7C3AED" />
+                    </linearGradient>
+                    <!-- Drop Shadow filter for premium glow -->
+                    <filter id="logoShadow" x="-20%" y="-20%" width="140%" height="140%">
+                        <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#7C3AED" flood-opacity="0.14" />
+                    </filter>
+                </defs>
+
+                <g class="logo-group" filter="url(#logoShadow)">
+                    <!-- Book Pages (Top/Back) - Rendered behind cover -->
+                    <path class="logo-pages-3" d="M 66,46 C 80,30 120,30 144,46 Z" fill="#E2E8F0" stroke="#2E1065" stroke-width="3" />
+                    <path class="logo-pages-2" d="M 67,46 C 80,34 120,34 145,46 Z" fill="#CBD5E1" stroke="#2E1065" stroke-width="3" />
+                    <path class="logo-pages-1" d="M 68,46 C 80,38 120,38 146,46 Z" fill="#F8FAFC" stroke="#2E1065" stroke-width="3" />
+
+                    <!-- Fills of Book Spine & Cover (no outlines here to prevent doubling stroke width) -->
+                    <path class="logo-spine-fill" d="M 68,46 L 56,46 C 50,46 50,52 50,56 L 50,144 C 50,148 50,154 56,154 L 68,154 Z" fill="url(#bookSpineGrad)" />
+                    <path class="logo-cover-fill" d="M 68,46 L 144,46 Q 152,46 152,54 L 152,146 Q 152,154 144,154 L 68,154 Z" fill="url(#bookCoverGrad)" />
+
+                    <!-- Spine Details (Straps) -->
+                    <rect class="logo-spine-band" x="50" y="70" width="18" height="8" fill="#4C1D95" opacity="0.6" rx="2" />
+                    <rect class="logo-spine-band" x="50" y="122" width="18" height="8" fill="#4C1D95" opacity="0.6" rx="2" />
+
+                    <!-- Combined Single Outline Path over the outer bounds -->
+                    <path class="logo-outline" d="M 68,46 L 144,46 Q 152,46 152,54 L 152,146 Q 152,154 144,154 L 56,154 Q 50,154 50,144 L 50,56 Q 50,46 56,46 Z" fill="none" stroke="#2E1065" stroke-width="4.5" stroke-linejoin="round" />
+
+                    <!-- Vertical Spine Divider line -->
+                    <line class="logo-spine-divider" x1="68" y1="46" x2="68" y2="154" stroke="#2E1065" stroke-width="4.5" stroke-linecap="round" />
+
+                    <!-- Face Elements Group -->
+                    <g class="logo-face">
+                        <!-- Eyebrows -->
+                        <path class="logo-eyebrow eyebrow-left" d="M 90,84 Q 96,79 102,84" fill="none" stroke="#2E1065" stroke-width="2.5" stroke-linecap="round" />
+                        <path class="logo-eyebrow eyebrow-right" d="M 118,84 Q 124,79 130,84" fill="none" stroke="#2E1065" stroke-width="2.5" stroke-linecap="round" />
+
+                        <!-- Eyes with Gloss Highlight -->
+                        <g class="logo-eye eye-left">
+                            <circle cx="96" cy="94" r="6" fill="#2E1065" />
+                            <circle cx="94" cy="92" r="1.8" fill="#FFFFFF" />
+                        </g>
+                        <g class="logo-eye eye-right">
+                            <circle cx="124" cy="94" r="6" fill="#2E1065" />
+                            <circle cx="122" cy="92" r="1.8" fill="#FFFFFF" />
+                        </g>
+
+                        <!-- Blush Cheeks -->
+                        <circle class="logo-blush blush-left" cx="86" cy="106" r="7" fill="#F43F5E" />
+                        <circle class="logo-blush blush-right" cx="134" cy="106" r="7" fill="#F43F5E" />
+
+                        <!-- Smile Arc -->
+                        <path class="logo-smile" d="M 96,108 C 96,121 124,121 124,108" fill="none" stroke="#2E1065" stroke-width="3.5" stroke-linecap="round" />
+                    </g>
+                </g>
+            </svg>
+            <h1 class="logo-text">Acadesk</h1>
+        </div>
+
+        <!-- Loading Indicator (fades out when loaded) -->
+        <div class="loading-container" id="loadingContainer">
+            <div class="loading-bar"></div>
+        </div>
+
+        <!-- Login Form Content (reveals smoothly after loading) -->
+        <div class="login-content" id="loginContent">
+            <h2>Welcome Back!</h2>
+            
+            <form style="width: 100%;" onsubmit="event.preventDefault();">
+                <div class="form-group">
+                    <input type="email" placeholder="Email Address" required>
+                </div>
+                <div class="form-group">
+                    <input type="password" placeholder="Password" required>
+                </div>
+                <button type="submit" class="login-btn">Sign In</button>
+            </form>
+        </div>
+
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const appContainer = document.getElementById("appContainer");
+
+            // Allow the progress bar to fill completely (matching the 2.6s keyframe)
+            // then morph the layout smoothly to the login card.
+            setTimeout(() => {
+                appContainer.classList.add("loaded");
+            }, 2700);
+        });
+    </script>
+</body>
+</html>
