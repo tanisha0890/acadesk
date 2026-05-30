@@ -187,14 +187,7 @@ export default function Home() {
   const [darkMode, setDarkMode] = useState<boolean>(true);
   const [loggedInEmail, setLoggedInEmail] = useState<string>("surajchoudhary5002@gmail.com");
   const [productivityScore, setProductivityScore] = useState<number>(94);
-  const [customGeminiKey, setCustomGeminiKey] = useState<string>("");
 
-  const handleSetCustomGeminiKey = (key: string) => {
-    setCustomGeminiKey(key);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("syncspace_gemini_key", key);
-    }
-  };
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mouseOffset, setMouseOffset] = useState({ x: 0, y: 0 });
@@ -677,8 +670,6 @@ export default function Home() {
       }
       if (savedScore) setProductivityScore(Number(savedScore));
       if (savedChat) setChatHistory(JSON.parse(savedChat));
-      const savedGeminiKey = localStorage.getItem("syncspace_gemini_key");
-      if (savedGeminiKey) setCustomGeminiKey(savedGeminiKey);
     }
   }, []);
 
@@ -891,126 +882,112 @@ export default function Home() {
     return { steps, confidence };
   };
 
-  // AI Chat responses (Gemini 2.5 Powered Automation Agent)
+  // AI Chat responses (Gemini 2.5 Server-Side Streaming Agent)
   const askAI = async (query: string) => {
     // 1. Add user message to state
     const newChat = [...chatHistory, { sender: "user" as const, text: query, timestamp: new Date().toLocaleTimeString() }];
     setChatHistory(newChat);
 
-    // 2. Add a loading "typing" bubble for AI
-    const loadingMessageId = `ai-loading-${Date.now()}`;
-    const withLoading = [...newChat, { sender: "ai" as const, text: "Thinking and organizing...", timestamp: new Date().toLocaleTimeString(), id: loadingMessageId }];
-    setChatHistory(withLoading);
+    // 2. Add an initial empty AI message bubble that will be streamed into
+    const aiMessageId = `ai-${Date.now()}`;
+    const withAi = [...newChat, { sender: "ai" as const, text: "Thinking and organizing...", timestamp: new Date().toLocaleTimeString(), id: aiMessageId }];
+    setChatHistory(withAi);
 
     try {
-      const apiKey = customGeminiKey.trim() || process.env.NEXT_PUBLIC_GEMINI_API_KEY || "AIzaSyCKF6Jl4HQqopRQZC9-S7oQ7A2RVRvNA2M";
-      const systemPrompt = `You are the SyncSpace AI Academic Assistant. Your job is to help the student manage their timetable, deadlines, exams, and team coordination.
-You have the power to automate scheduling. If the user wants to schedule or add an exam, quiz, test, project, assignment, submission, or meeting, you MUST respond with a JSON object.
-
-Current date is Sunday, May 31, 2026. Use this as the anchor for relative dates (e.g. "Friday" is 2026-06-05, "tomorrow" is 2026-06-01, "next Monday" is 2026-06-08).
-Course Codes to map:
-- Linear Algebra, Maths, Algebra -> MA201
-- Web Development, Web Dev, Databases -> CS302
-- Algorithms, Software Engineering, SE -> CS301
-- Any other topic -> GEN101
-
-Categories: "Exam", "Submission", "Project", "Meeting"
-Priorities: "Critical" (for exams), "Important" (for projects/submissions), "Normal" (for others)
-
-JSON RESPONSE FORMAT:
-If scheduling a task:
-{
-  "action": "schedule",
-  "event": {
-    "courseCode": "MA201",
-    "title": "Maths Exam",
-    "date": "2026-06-05",
-    "time": "04:00 PM",
-    "priority": "Critical",
-    "category": "Exam"
-  },
-  "chatResponse": "🗓️ I have automatically scheduled your Maths Exam on Friday, June 5th at 4:00 PM!"
-}
-
-If just chatting or answering a question:
-{
-  "action": "chat",
-  "chatResponse": "Your helpful response text here..."
-}
-
-CRITICAL: Return ONLY the JSON object. Do not include markdown block formatting, do not include \`\`\`json. Return a raw JSON string.`;
-
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+      const response = await fetch("/api/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({
-          contents: [
-            {
-              role: "user",
-              parts: [
-                { text: systemPrompt },
-                { text: `User request: ${query}` }
-              ]
-            }
-          ],
-          generationConfig: {
-            responseMimeType: "application/json"
-          }
-        })
+        body: JSON.stringify({ prompt: query })
       });
 
       if (!response.ok) {
-        throw new Error("Failed to contact Gemini API");
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to fetch streaming response from server");
       }
 
-      const data = await response.json();
-      const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
-      const parsed = JSON.parse(rawText.trim());
+      if (!response.body) {
+        throw new Error("No readable stream response from server");
+      }
 
-      let answer = "";
-      if (parsed.action === "schedule" && parsed.event) {
-        // Automatically schedule the event!
-        addDeadline({
-          courseCode: parsed.event.courseCode || "GEN101",
-          title: parsed.event.title || "Academic Event",
-          date: parsed.event.date || "2026-06-02",
-          time: parsed.event.time || "04:00 PM",
-          priority: parsed.event.priority || "Normal",
-          category: parsed.event.category || "Submission"
-        });
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let done = false;
+      let accumulatedText = "";
 
-        // Scan for collisions
-        const newDl = { id: "temp", ...parsed.event, completed: false };
-        const currentDeadlines = [...deadlines, newDl];
-        const activeCollisions = findCollisions(currentDeadlines);
-        const hasCollisionOnThisDate = activeCollisions.some(c => c.date === parsed.event.date);
+      // Stream read loop
+      while (!done) {
+        const { value, done: doneReading } = await reader.read();
+        done = doneReading;
+        if (value) {
+          const chunk = decoder.decode(value, { stream: !done });
+          accumulatedText += chunk;
+          
+          // Update the UI chat bubble in real-time chunk-by-chunk!
+          setChatHistory(prev => 
+            prev.map(msg => 
+              msg.id === aiMessageId ? { ...msg, text: accumulatedText } : msg
+            )
+          );
+        }
+      }
 
-        let collisionWarning = "";
-        if (hasCollisionOnThisDate) {
-          const collisionTasks = currentDeadlines.filter(d => d.date === parsed.event.date);
-          collisionWarning = `\n\n⚠️ **Deadline Collision Alert**: I detected that you now have **${collisionTasks.length} tasks** scheduled on **${parsed.event.date}**. This increases your local stress index. I highly recommend allocating **Focus Study Blocks** on the preceding days to balance your capacity.`;
+      // 3. The stream has finished. Since Gemini returned JSON, let's parse the final JSON string!
+      try {
+        const parsed = JSON.parse(accumulatedText.trim());
+        let answer = "";
+        
+        if (parsed.action === "schedule" && parsed.event) {
+          // Automatically schedule the event!
+          addDeadline({
+            courseCode: parsed.event.courseCode || "GEN101",
+            title: parsed.event.title || "Academic Event",
+            date: parsed.event.date || "2026-06-02",
+            time: parsed.event.time || "04:00 PM",
+            priority: parsed.event.priority || "Normal",
+            category: parsed.event.category || "Submission"
+          });
+
+          // Scan for collisions
+          const newDl = { id: "temp", ...parsed.event, completed: false };
+          const currentDeadlines = [...deadlines, newDl];
+          const activeCollisions = findCollisions(currentDeadlines);
+          const hasCollisionOnThisDate = activeCollisions.some(c => c.date === parsed.event.date);
+
+          let collisionWarning = "";
+          if (hasCollisionOnThisDate) {
+            const collisionTasks = currentDeadlines.filter(d => d.date === parsed.event.date);
+            collisionWarning = `\n\n⚠️ **Deadline Collision Alert**: I detected that you now have **${collisionTasks.length} tasks** scheduled on **${parsed.event.date}**. This increases your local stress index. I highly recommend allocating **Focus Study Blocks** on the preceding days to balance your capacity.`;
+          }
+
+          answer = `${parsed.chatResponse}${collisionWarning}\n\n*Timetable updated in real-time. Workload forecast graphs recalculated.*`;
+        } else {
+          answer = parsed.chatResponse || accumulatedText;
         }
 
-        answer = `${parsed.chatResponse}${collisionWarning}\n\n*Timetable updated in real-time. Workload forecast graphs recalculated.*`;
-      } else {
-        answer = parsed.chatResponse || "I've analyzed your academic timetable. Your overall stress index is Medium. Your workload heatmap shows a slight spike on Tuesday and Wednesday. I suggest finishing the Database design by Monday evening to keep your schedule fully balanced.";
+        // Update the chat bubble with the beautifully formatted response (with automation details)
+        setChatHistory(prev => {
+          const updated = prev.map(msg => 
+            msg.id === aiMessageId ? { ...msg, text: answer } : msg
+          );
+          saveState("syncspace_chat", updated);
+          return updated;
+        });
+
+      } catch (jsonErr) {
+        // If it was not valid JSON, just leave the text as is
+        setChatHistory(prev => {
+          saveState("syncspace_chat", prev);
+          return prev;
+        });
       }
 
-      // Remove "typing..." and add actual answer
-      setChatHistory(prev => {
-        const filtered = prev.filter(m => m.id !== loadingMessageId);
-        const updated = [...filtered, { sender: "ai" as const, text: answer, timestamp: new Date().toLocaleTimeString() }];
-        saveState("syncspace_chat", updated);
-        return updated;
-      });
-
-    } catch (error) {
-      console.error("Gemini API Error:", error);
-      // Failsafe fallback parser if API key is invalid or request fails
+    } catch (error: any) {
+      console.error("Streaming API Error:", error);
+      // Failsafe fallback parser if backend route fails
       const lower = query.toLowerCase();
-      let answer = "I'm having trouble connecting to my Gemini AI core right now. I have safely scheduled your request using my local offline parser.";
+      let answer = `I encountered an error connecting to the Gemini backend: ${error.message}. I have processed your request locally.`;
       
       const scheduleKeywords = ["exam", "test", "quiz", "project", "submission", "homework", "assignment", "meeting"];
       const hasScheduleAction = scheduleKeywords.some(keyword => lower.includes(keyword)) && 
@@ -1114,17 +1091,15 @@ CRITICAL: Return ONLY the JSON object. Do not include markdown block formatting,
       } else {
         answer = "I've analyzed your academic timetable locally. Your overall stress index is Medium. Your workload heatmap shows a slight spike on Tuesday and Wednesday. I suggest finishing the Database design by Monday evening to keep your schedule fully balanced.";
       }
-
       setChatHistory(prev => {
-        const filtered = prev.filter(m => m.id !== loadingMessageId);
-        const updated = [...filtered, { sender: "ai" as const, text: answer, timestamp: new Date().toLocaleTimeString() }];
+        const updated = prev.map(msg => 
+          msg.id === aiMessageId ? { ...msg, text: answer } : msg
+        );
         saveState("syncspace_chat", updated);
         return updated;
       });
     }
   };
-
-
 
   // Calendar rendering helpers
   const renderMiniCalendar = () => {
@@ -2705,7 +2680,7 @@ CRITICAL: Return ONLY the JSON object. Do not include markdown block formatting,
                   <div className={`rounded-3xl border flex flex-col h-full overflow-hidden ${
                     darkMode ? "bg-[#0d0c18]/70 border-white/[0.06] backdrop-blur-md" : "bg-white border-slate-200 shadow-sm"
                   }`}>
-                    <div className="p-5 border-b dark:border-white/[0.04] border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="p-5 border-b dark:border-white/[0.04] border-slate-100 flex items-center justify-between">
                       <div className="flex items-center gap-2.5">
                         <span className="p-2 rounded bg-indigo-500/10 text-indigo-500"><Bot className="w-5 h-5" /></span>
                         <div>
@@ -2714,18 +2689,6 @@ CRITICAL: Return ONLY the JSON object. Do not include markdown block formatting,
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" /> Live Context Active
                           </span>
                         </div>
-                      </div>
-                      
-                      {/* Optional Gemini API Key input field */}
-                      <div className="flex items-center gap-2 max-w-xs self-end sm:self-auto w-full sm:w-auto">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap">Gemini Key:</span>
-                        <input 
-                          type="password"
-                          placeholder={customGeminiKey ? "••••••••••••••••" : "Paste Gemini API Key..."}
-                          value={customGeminiKey}
-                          onChange={(e) => handleSetCustomGeminiKey(e.target.value)}
-                          className="h-8 px-2.5 rounded-lg border text-[10px] focus:outline-none dark:bg-black/45 dark:border-white/[0.08] dark:text-slate-200 bg-slate-50 border-slate-200 text-slate-700 w-full sm:w-[170px]"
-                        />
                       </div>
                     </div>
 
