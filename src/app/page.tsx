@@ -44,6 +44,11 @@ function useScrollReveal() {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
+    // Bulletproof fallback: guarantee visibility after mount so dashboard is never blank
+    const timer = setTimeout(() => {
+      setIsVisible(true);
+    }, 150);
+
     if (typeof window === "undefined" || !("IntersectionObserver" in window)) {
       setIsVisible(true);
       return;
@@ -55,11 +60,12 @@ function useScrollReveal() {
           observer.unobserve(entry.target);
         }
       },
-      { threshold: 0.05 }
+      { threshold: 0.01 }
     );
     const currentRef = ref.current;
     if (currentRef) observer.observe(currentRef);
     return () => {
+      clearTimeout(timer);
       if (currentRef) observer.unobserve(currentRef);
     };
   }, []);
