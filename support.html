@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Acadesk - Soothing Support Dashboard</title>
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+:root {
+    --bg-gradient: linear-gradient(135deg, #F6F1F9 0%, #EFE9F5 50%, #E4DCF1 100%);
+    --purple-main: #7C5CBF;
+    --purple-light: #A78BFA;
+    --purple-soft: #F3EFFF;
+    --text-main: #2A1F42;
+    --text-muted: #786E8D;
+    --glass: rgba(255, 255, 255, 0.5);
+    --glass-card: rgba(255, 255, 255, 0.75);
+    --white: #ffffff;
+    
+    /* Gentle Soft Hierarchy Colorways */
+    --must-bg: #FFF5F5;
+    --must-text: #B44444;
+    --wait-bg: #F5F7FF;
+    --wait-text: #4456B4;
+    --success-soft: #ECFDF5;
+    --success-text: #059669;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg-gradient);
+    min-height: 100vh;
+    color: var(--text-main);
+    overflow-x: hidden;
+    line-height: 1.5;
+}
+
+/* Ambient Blurs */
+.ambient-glow {
+    position: fixed;
+    width: 600px;
+    height: 600px;
+    border-radius: 50%;
+    filter: blur(160px);
+    opacity: 0.25;
+    z-index: -1;
+}
+.glow1 { background: #E9D5FF; top: -200px; left: -100px; }
+.glow2 { background: #DDD6FE; right: -100px; bottom: -100px; }
+
+/* Desktop-First Responsive App Grid */
+.app-layout {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 32px;
+    padding: 32px;
+    max-width: 1440px;
+    margin: 0 auto;
+    min-height: 100vh;
+}
+
+/* Glassmorphism Design System Elements */
+.card {
+    background: var(--glass-card);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    border-radius: 24px;
+    box-shadow: 0 8px 32px rgba(124, 92, 191, 0.03);
+    padding: 28px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* LEFT SIDEBAR NAVIGATION */
+.sidebar {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: fit-content;
+    position: sticky;
+    top: 32px;
+}
+
+.logo {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.8rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #2A1F42 0%, #7C5CBF 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 36px;
+    letter-spacing: -0.5px;
+}
+
+.nav-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    padding: 14px 20px;
+    border-radius: 16px;
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--text-main);
+    transition: all 0.2s ease;
+    font-size: 0.95rem;
+}
+
+.nav-item:hover {
+    background: rgba(255, 255, 255, 0.5);
+    transform: translateX(4px);
+}
+
+.nav-item.active {
+    background: var(--white);
+    color: var(--purple-main);
+    box-shadow: 0 4px 15px rgba(124, 92, 191, 0.08);
+}
+
+/* CENTRAL WORKSPACE CANVAS */
+.main-viewport {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+}
+
+/* Calming Typography Layouts */
+.welcome-hero h1 {
+    font-family: 'Outfit', sans-serif;
+    font-size: 2.4rem;
+    font-weight: 700;
+    color: var(--text-main);
+    letter-spacing: -0.5px;
+}
+.welcome-hero p {
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    margin-top: 6px;
+}
+
+/* DYNAMIC VIEWS CONTROL SWITCHER */
+.view-panel {
+    display: none;
+    flex-direction: column;
+    gap: 32px;
+}
+.view-panel.active-panel {
+    display: flex;
+}
+
+.panel-title {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.4rem;
+    font-weight: 600;
+    margin-bottom: 18px;
+    color: var(--text-main);
+}
+
+/* SPLIT COMPONENT FOR FOCUS FEED */
+.focus-grid {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 32px;
+    align-items: start;
+}
+
+.inner-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+/* EMERGENCY FOCUS ELEMENT */
+.emergency-card {
+    background: linear-gradient(to dotted, var(--must-bg), var(--white));
+    border-left: 4px solid var(--must-text);
+}
+.emergency-header {
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--must-text);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.emergency-body {
+    font-size: 0.95rem;
+    color: var(--text-main);
+}
+
+/* SUPPORTIVE ROTATING BANNER */
+.encouragement-card {
+    background: rgba(255, 255, 255, 0.8);
+    text-align: center;
+    padding: 20px;
+    font-style: italic;
+    color: var(--purple-main);
+    font-weight: 500;
+    font-size: 1.05rem;
+    border: 1px dashed var(--purple-light);
+}
+
+/* TASK TRACKING TIERS */
+.section-subtitle {
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.task-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.task-card {
+    background: var(--white);
+    padding: 18px;
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.01);
+}
+
+.task-main-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.task-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.task-checkbox {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 2px solid var(--purple-light);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    background: var(--white);
+}
+.task-checkbox:hover {
+    background: var(--purple-soft);
+}
+.task-checkbox.done {
+    background: var(--success-text);
+    border-color: var(--success-text);
+}
+.task-checkbox.done::after {
+    content: "✓";
+    color: var(--white);
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.task-title {
+    font-weight: 500;
+    font-size: 1rem;
+}
+.task-title.crossed {
+    text-decoration: line-through;
+    color: var(--text-muted);
+}
+
+/* TINY FIRST STEP MODULES */
+.tiny-step-box {
+    background: var(--purple-soft);
+    padding: 12px 16px;
+    border-radius: 12px;
+    margin-left: 38px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.tiny-step-label {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+.tiny-step-action {
+    font-weight: 600;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--purple-main);
+}
+.tiny-actions-row {
+    display: flex;
+    gap: 8px;
+}
+.action-btn {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    border-radius: 8px;
+    border: 1px solid rgba(124, 92, 191, 0.2);
+    background: var(--white);
+    color: var(--text-main);
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+.action-btn:hover {
+    background: var(--purple-main);
+    color: var(--white);
+}
+
+/* COLLAPSIBLE ACCORDION PIECE */
+.collapsible-container {
+    margin-top: 12px;
+}
+.collapsible-trigger {
+    background: transparent;
+    border: none;
+    color: var(--purple-main);
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 0;
+}
+.collapsible-content {
+    display: none;
+    margin-top: 12px;
+}
+.collapsible-content.expanded {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* AI SUPPORT COACH INTERFACE */
+.coach-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+.coach-speech-bubble {
+    background: var(--white);
+    border-radius: 20px;
+    padding: 20px;
+    border-bottom-left-radius: 4px;
+    position: relative;
+    border: 1px solid rgba(124, 92, 191, 0.1);
+}
+.coach-speech-bubble p {
+    font-size: 0.95rem;
+    color: var(--text-main);
+    line-height: 1.6;
+}
+.coach-actions-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.coach-btn {
+    width: 100%;
+    background: var(--white);
+    color: var(--text-main);
+    border: 1px solid rgba(124, 92, 191, 0.2);
+    padding: 12px 16px;
+    border-radius: 14px;
+    font-weight: 500;
+    font-size: 0.9rem;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.2s ease;
+}
+.coach-btn:hover {
+    background: var(--purple-soft);
+    border-color: var(--purple-light);
+    transform: translateY(-1px);
+}
+
+/* ENCOURAGEMENT FEEDBACK NOTIFICATION POOL */
+.feedback-banner {
+    background: var(--success-soft);
+    color: var(--success-text);
+    padding: 16px;
+    border-radius: 16px;
+    font-weight: 500;
+    text-align: center;
+    font-size: 0.95rem;
+    margin-bottom: 16px;
+    display: none;
+}
+
+/* BREAK SUGGESTION BLOCK */
+.break-card {
+    background: #FFFBF0;
+    border: 1px dashed #EAB308;
+    display: none;
+}
+
+/* CALENDAR TAB PANELS */
+.calendar-layout {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 12px;
+    margin-top: 16px;
+}
+.cal-day-header {
+    text-align: center;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+.cal-cell {
+    background: var(--white);
+    aspect-ratio: 1.2;
+    border-radius: 12px;
+    padding: 8px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+.cal-cell.today {
+    background: var(--purple-soft);
+    border: 1px solid var(--purple-main);
+}
+.cal-deadline {
+    font-size: 0.75rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: var(--must-bg);
+    color: var(--must-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ENERGY MAP (HEATMAP RENDERING FRAMEWORK) */
+.energy-map-grid {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    background: var(--white);
+    padding: 16px;
+    border-radius: 16px;
+}
+.energy-node {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    background: #F3F4F6;
+    cursor: pointer;
+}
+.energy-node.calm { background: #EEF2F6; }
+.energy-node.moderate { background: #E0E7FF; }
+.energy-node.peak { background: #C7D2FE; }
+
+.energy-legend {
+    display: flex;
+    gap: 16px;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 12px;
+}
+
+/* WORKLOAD INSIGHTS COMPONENT VARIATION */
+.insights-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+}
+.insight-metric-box {
+    background: var(--white);
+    padding: 20px;
+    border-radius: 16px;
+    text-align: center;
+}
+.insight-label {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+}
+.insight-value {
+    font-family: 'Outfit';
+    font-size: 1.4rem;
+    font-weight: 600;
+}
+
+/* COLLAB ENVIRONMENT SPACE PANEL */
+.collab-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+}
+.member-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--white);
+    padding: 14px 20px;
+    border-radius: 16px;
+    margin-bottom: 10px;
+}
+.help-btn {
+    background: var(--purple-soft);
+    color: var(--purple-main);
+    border: 1px solid rgba(124, 92, 191, 0.1);
+    padding: 8px 14px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.help-btn:hover {
+    background: var(--purple-main);
+    color: var(--white);
+}
+
+/* EMPTY STATES STYLINGS */
+.empty-state-card {
+    text-align: center;
+    padding: 32px;
+    color: var(--text-muted);
+}
+
+/* CLEAN RESPONSIVE WRAPPERS */
+@media (max-width: 1024px) {
+    .app-layout { grid-template-columns: 1fr; gap: 24px; padding: 20px; }
+    .sidebar { position: static; height: auto; }
+    .focus-grid { grid-template-columns: 1fr; }
+    .insights-row { grid-template-columns: 1fr; }
+    .collab-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="ambient-glow glow1"></div>
+<div class="ambient-glow glow2"></div>
+
+<div class="app-layout">
+
+    <!-- LEFT SIDEBAR STICKY NAVIGATION -->
+    <aside class="sidebar card">
+        <div>
+            <div class="logo">⚡ Acadesk</div>
+            <nav class="nav-group">
+                <div class="nav-item active" onclick="navigateView('dashboard-panel', this)">🌸 Support Center</div>
+                <div class="nav-item" onclick="navigateView('calendar-panel', this)">📅 Calendar</div>
+                <div class="nav-item" onclick="navigateView('insights-panel', this)">📈 Workload Insights</div>
+                <div class="nav-item" onclick="navigateView('collab-panel', this)">🤝 Collab Space</div>
+            </nav>
+        </div>
+    </aside>
+
+    <!-- CORE WORKSPACE INTERFACE CANVAS -->
+    <main class="main-viewport">
+        
+        <!-- CALMING HEADER DECK -->
+        <header class="welcome-hero">
+            <h1 id="time-greeting">Welcome back</h1>
+            <p>Let's take things one small step at a time today.</p>
+        </header>
+
+        <!-- DYNAMIC TASK FEED ARCHITECTURE PANELS -->
+        <section id="dashboard-panel" class="view-panel active-panel">
+            
+            <!-- COGNITIVE REASSURANCE NOTIFICATION POOL -->
+            <div class="feedback-banner" id="momentum-booster-bar"></div>
+
+            <div class="focus-grid">
+                
+                <!-- PRIMARY ACTION LAYER: LEFT FLANK -->
+                <div class="inner-stack">
+                    
+                    <!-- EMERGENCY FOCUS BLOCK -->
+                    <div class="card emergency-card" id="emergency-mount-node">
+                        <!-- Filled Dynamically -->
+                    </div>
+
+                    <!-- ROTATING SUPPORT STATEMENTS BANNER -->
+                    <div class="card encouragement-card" id="rotating-affirmation-node">
+                        "Focus on the next step, not the whole mountain."
+                    </div>
+
+                    <!-- BREAK INSTRUCTIONS PANEL SYSTEM -->
+                    <div class="card break-card" id="break-recommendation-node">
+                        <div style="font-weight:700; color:#B49044; margin-bottom:4px;">☕ Time to rest your mind?</div>
+                        <p style="font-size:0.9rem; color:#6B562B;">You've made wonderful progress. Consider stepping away for 5 minutes to drink some water or stretch.</p>
+                    </div>
+
+                    <!-- MAIN WORKLOAD SPLIT (TODAY'S ESSENTIAL TOP 3 VS CAN WAIT ACCORDION) -->
+                    <div class="card">
+                        <div class="section-subtitle">🌸 Today's Essentials</div>
+                        <div class="task-list" id="essentials-root-bucket">
+                            <!-- Filled Dynamically -->
+                        </div>
+
+                        <!-- CAN WAIT WRAPPER INTERFACE ACCORDION -->
+                        <div class="collapsible-container">
+                            <button class="collapsible-trigger" onclick="toggleCanWaitAccordion()">
+                                <span id="accordion-arrow">👉</span> View items that can wait
+                            </button>
+                            <div class="collapsible-content" id="can-wait-root-bucket">
+                                <!-- Filled Dynamically -->
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- SECONDARY SIDE ARRAY LAYER: RIGHT FLANK (AI COACH) -->
+                <div class="inner-stack">
+                    <div class="card">
+                        <div class="section-subtitle">💜 AI Support Coach</div>
+                        <div class="coach-container">
+                            <div class="coach-speech-bubble">
+                                <p id="coach-response-text">You have 5 items in your system, but only 2 require active focus today. Let's shelter your attention spans from everything else for now.</p>
+                            </div>
+                            <div class="coach-actions-grid">
+                                <button class="coach-btn" onclick="askCoach('simplify')">✨ Simplify My Day</button>
+                                <button class="coach-btn" onclick="askCoach('breakdown')">✨ Break This Down</button>
+                                <button class="coach-btn" onclick="askCoach('wait')">✨ What Can Wait?</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- CALENDAR CONFIG VIEW PANEL -->
+        <section id="calendar-panel" class="view-panel">
+            <div class="card">
+                <div class="panel-title">📅 Soft Roadmap View</div>
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: -12px; margin-bottom: 16px;">
+                    A gentle view of upcoming horizons without the stress of an overcrowded schedule.
+                </p>
+                <div class="calendar-layout">
+                    <div class="cal-day-header">Mon</div>
+                    <div class="cal-day-header">Tue</div>
+                    <div class="cal-day-header">Wed</div>
+                    <div class="cal-day-header">Thu</div>
+                    <div class="cal-day-header">Fri</div>
+                    <div class="cal-day-header">Sat</div>
+                    <div class="cal-day-header">Sun</div>
+                    
+                    <!-- Mocking soft rows -->
+                    <div class="cal-cell"><span>1</span></div>
+                    <div class="cal-cell today"><span>2</span><div class="cal-deadline" title="Today's Target">OS Lab Report</div></div>
+                    <div class="cal-cell"><span>3</span><div class="cal-deadline" title="Upcoming horizon deadline">DBMS Project</div></div>
+                    <div class="cal-cell"><span>4</span></div>
+                    <div class="cal-cell"><span>5</span></div>
+                    <div class="cal-cell"><span>6</span></div>
+                    <div class="cal-cell"><span>7</span></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- RECOVERING METRIC SYSTEMS PANEL -->
+        <section id="insights-panel" class="view-panel">
+            <div class="card">
+                <div class="panel-title">📈 Load Reflection Balancing</div>
+                <div class="insights-row">
+                    <div class="insight-metric-box">
+                        <div class="insight-label">Today's Load</div>
+                        <div class="insight-value" style="color: var(--purple-main);">Medium Balance</div>
+                    </div>
+                    <div class="insight-metric-box">
+                        <div class="insight-label">Most Busy Horizon Block</div>
+                        <div class="insight-value" style="color: var(--must-text);">Thursday</div>
+                    </div>
+                    <div class="insight-metric-box">
+                        <div class="insight-label">Suggested Rest Window</div>
+                        <div class="insight-value" style="color: var(--success-text);">Sunday</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="panel-title">⚡ Energy Map</div>
+                <p style="color: var(--text-muted); font-size:0.9rem; margin-top:-12px; margin-bottom:16px;">
+                    Tracks systemic cognitive density blocks to assist you in preserving energy vectors.
+                </p>
+                <div class="energy-map-grid" id="energy-matrix-mount">
+                    <!-- Loaded dynamically via script -->
+                </div>
+                <div class="energy-legend">
+                    <div style="display:flex; align-items:center; gap:6px;"><div class="energy-node calm" style="width:14px; height:14px;"></div> Flow Slate</div>
+                    <div style="display:flex; align-items:center; gap:6px;"><div class="energy-node moderate" style="width:14px; height:14px;"></div> Intermediate Volume</div>
+                    <div style="display:flex; align-items:center; gap:6px;"><div class="energy-node peak" style="width:14px; height:14px;"></div> Intensive Horizon</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- NETWORK CHANNELS ENVIRONMENT SPACE -->
+        <section id="collab-panel" class="view-panel">
+            <div class="card">
+                <div class="panel-title">🤝 Connected Study Space</div>
+                <p style="color: var(--text-muted); font-size:0.9rem; margin-top:-12px; margin-bottom:20px;">
+                    Work calmly with peers. If a task feels overwhelming, you can request a helping hand.
+                </p>
+                <div class="collab-grid">
+                    <div>
+                        <div class="member-row">
+                            <div>
+                                <strong style="font-size:0.95rem;">Tanisha</strong>
+                                <div style="font-size:0.75rem; color:var(--text-muted);">UI Core Designer</div>
+                            </div>
+                            <button class="help-btn" onclick="triggerHelpSignal('Tanisha')">👥 Ask For Help</button>
+                        </div>
+                        <div class="member-row">
+                            <div>
+                                <strong style="font-size:0.95rem;">Aryan</strong>
+                                <div style="font-size:0.75rem; color:var(--text-muted);">Infrastructure System Architect</div>
+                            </div>
+                            <button class="help-btn" onclick="triggerHelpSignal('Aryan')">👥 Ask For Help</button>
+                        </div>
+                    </div>
+                    <div class="card" style="background: rgba(255,255,255,0.4); border-radius:16px; padding:20px;">
+                        <h4 style="font-size:0.9rem; font-weight:700; margin-bottom:8px;">Shared Activity Flow</h4>
+                        <p style="font-size:0.85rem; color:var(--text-muted);">Aryan checked out an assignment module step to unwind.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+</div>
+
+<script>
+// SOOTHING CORE DATA MANAGEMENT OBJECTS
+let coreState = {
+    tasks: [
+        { id: 101, name: "Operating Systems Lab Report Compile", category: "OS", priority: "High", isToday: true, done: false, tinyStep: "Open your report document framework", docLink: "#" },
+        { id: 102, name: "DBMS Project Final Validation Submission", category: "DBMS", priority: "High", isToday: true, done: false, tinyStep: "Read over the first feedback prompt note", docLink: "#" },
+        { id: 103, name: "Computer Networks Presentation Assets Build", category: "CN", priority: "Medium", isToday: true, done: false, tinyStep: "Outline your title slide layout parameters", docLink: "#" },
+        { id: 104, name: "Review Security Authentication Hierarchies", category: "Infra SEC", priority: "Low", isToday: false, done: false, tinyStep: "Open lecture slide summary layout", docLink: "#" },
+        { id: 105, name: "Compile Advanced Database Indexing Scripts", category: "DBMS", priority: "Low", isToday: false, done: false, tinyStep: "Initialize execution query terminal console", docLink: "#" }
+    ],
+    completedTodayCounter: 0,
+    affirmations: [
+        "You don't need to finish everything today.",
+        "Progress is still progress.",
+        "Done is better than perfect.",
+        "Small steps count.",
+        "Focus on the next step, not the whole mountain."
+    ]
+};
+
+document.addEventListener("DOMContentLoaded", () => {
+    initializeGreetingsEngine();
+    renderSupportiveCanvasView();
+    mountEnergyMatrixStructure();
+    rotateAffirmationText();
+});
+
+function initializeGreetingsEngine() {
+    const currentHour = new Date().getHours();
+    let textStr = "Good morning";
+    if (currentHour >= 12 && currentHour < 17) textStr = "Good afternoon";
+    else if (currentHour >= 17) textStr = "Good evening";
+    document.getElementById("time-greeting").innerText = `${textStr}, let's trace a gentle runway flow.`;
+}
+
+function navigateView(panelId, element) {
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+    element.classList.add('active');
+
+    document.querySelectorAll('.view-panel').forEach(p => p.classList.remove('active-panel'));
+    document.getElementById(panelId).classList.add('active-panel');
+}
+
+function renderSupportiveCanvasView() {
+    const essentialsContainer = document.getElementById("essentials-root-bucket");
+    const waitContainer = document.getElementById("can-wait-root-bucket");
+    
+    // SPLIT LOGICAL DECK: AUTO SEGREGATION LAYER
+    const activeEssentials = coreState.tasks.filter(t => t.isToday);
+    const activeCanWait = coreState.tasks.filter(t => !t.isToday);
+
+    // EMERGENCY COMPONENT TELEMETRY CAPTURED HERE
+    renderEmergencyPrioritizationCard(activeEssentials);
+
+    // 1. RENDER TODAY'S TOP 3 ESSENTIAL TRACKS
+    if(activeEssentials.length === 0) {
+        essentialsContainer.innerHTML = `
+            <div class="empty-state-card">
+                <p>🌸 Let's start small.</p>
+                <span style="font-size:0.85rem; color:var(--text-muted);">Choose one thing and we'll help you navigate comfortably from there.</span>
+            </div>
+        `;
+    } else {
+        essentialsContainer.innerHTML = activeEssentials.map(t => generateCalmTaskTemplate(t)).join('');
+    }
+
+    // 2. RENDER CAN WAIT DECK
+    if(activeCanWait.length === 0) {
+        waitContainer.innerHTML = `<p style="font-size:0.85rem; color:var(--text-muted); padding:10px;">No upcoming items shelved away right now.</p>`;
+    } else {
+        waitContainer.innerHTML = activeCanWait.map(t => generateCalmTaskTemplate(t)).join('');
+    }
+}
+
+function generateCalmTaskTemplate(task) {
+    return `
+        <div class="task-card">
+            <div class="task-main-row">
+                <div class="task-left">
+                    <div class="task-checkbox ${task.done ? 'done' : ''}" onclick="completeCalmTaskNode(${task.id})"></div>
+                    <span class="task-title ${task.done ? 'crossed' : ''}">${escapeHtml(task.name)}</span>
+                </div>
+            </div>
+            ${!task.done ? `
+                <div class="tiny-step-box">
+                    <div class="tiny-step-label">Tiny First Step:</div>
+                    <div class="tiny-step-action">
+                        <span>✨</span> ${escapeHtml(task.tinyStep)}
+                    </div>
+                    <div class="tiny-actions-row">
+                        <button class="action-btn" onclick="triggerFiveMinuteTimer('${escapeHtml(task.name)}')">▶ Start for 5 Minutes</button>
+                        <button class="action-btn" onclick="window.open('${task.docLink}')">▶ Open Assignment</button>
+                    </div>
+                </div>
+            ` : ''}
+        </div>
+    `;
+}
+
+function renderEmergencyPrioritizationCard(essentialsList) {
+    const target = document.getElementById("emergency-mount-node");
+    const activePending = essentialsList.filter(t => !t.done);
+
+    if(activePending.length === 0) {
+        target.style.display = "none";
+        return;
+    }
+    
+    // Safety strategy: bubble up high priority items first
+    const focalItem = activePending[0];
+    target.style.display = "block";
+    target.innerHTML = `
+        <div class="emergency-header">🚨 What needs attention today?</div>
+        <div class="emergency-body">
+            Your <strong>${escapeHtml(focalItem.name)}</strong> is the closest baseline priority item listed on your radar right now. Let's make this our single focal anchor space.
+        </div>
+    `;
+}
+
+function completeCalmTaskNode(taskId) {
+    coreState.tasks = coreState.tasks.map(t => {
+        if(t.id === taskId) {
+            const stateChange = !t.done;
+            if(stateChange) coreState.completedTodayCounter++;
+            return { ...t, done: stateChange };
+        }
+        return t;
+    });
+
+    triggerEncouragementBoosterToast();
+    renderSupportiveCanvasView();
+}
+
+function triggerEncouragementBoosterToast() {
+    const booster = document.getElementById("momentum-booster-bar");
+    const breakBlock = document.getElementById("break-recommendation-node");
+    
+    const compliments = [
+        "🌸 Nice work.",
+        "💜 You already completed one important thing today.",
+        "✨ Progress counts.",
+        "🌱 One step at a time."
+    ];
+    
+    const selectIndex = Math.floor(Math.random() * compliments.length);
+    booster.innerText = compliments[selectIndex];
+    booster.style.display = "block";
+    
+    // Show gentle break recommendation frames upon threshold triggers
+    if(coreState.completedTodayCounter >= 2) {
+        breakBlock.style.display = "block";
+    }
+
+    setTimeout(() => {
+        booster.style.fadeOut = "true";
+    }, 4000);
+}
+
+function toggleCanWaitAccordion() {
+    const content = document.getElementById("can-wait-root-bucket");
+    const arrow = document.getElementById("accordion-arrow");
+    
+    if(content.classList.contains("expanded")) {
+        content.classList.remove("expanded");
+        arrow.innerText = "👉";
+    } else {
+        content.classList.add("expanded");
+        arrow.innerText = "👇";
+    }
+}
+
+function askCoach(intentType) {
+    const output = document.getElementById("coach-response-text");
+    if(intentType === 'simplify') {
+        output.innerText = "Let's filter out the peripheral background tasks. Focus entirely on opening your OS document for just five minutes today. Everything else can wait safely in storage.";
+    } else if(intentType === 'breakdown') {
+        output.innerText = "Let's break down your DBMS validation target step into tiny tasks: First, look at the first evaluation point note. Second, write a single summary line. That's all we need.";
+    } else if(intentType === 'wait') {
+        output.innerText = "Your Security Infrastructure analysis and Database index scripts are safely moved out of today's workload. Your schedule is clear to breathe.";
+    }
+}
+
+function triggerFiveMinuteTimer(taskLabel) {
+    alert(`Timer initialized: Let's give "${taskLabel}" a gentle 5-minute block. No pressure to continue past that point.`);
+}
+
+function triggerHelpSignal(peerName) {
+    alert(`Help message generated: A request module template has been quietly prepared to share context strings with ${peerName}.`);
+}
+
+function mountEnergyMatrixStructure() {
+    const root = document.getElementById("energy-matrix-mount");
+    if(!root) return;
+    
+    let blocks = "";
+    // Build a structured, beautiful 28-day soft historical load perspective mapping sequence
+    for(let i=0; i<28; i++) {
+        let type = "calm";
+        if(i % 5 === 0) type = "moderate";
+        if(i === 12 || i === 19) type = "peak";
+        blocks += `<div class="energy-node ${type}" title="Energy Tracking Metrics Layer Node"></div>`;
+    }
+    root.innerHTML = blocks;
+}
+
+function rotateAffirmationText() {
+    const node = document.getElementById("rotating-affirmation-node");
+    setInterval(() => {
+        const arr = coreState.affirmations;
+        const index = Math.floor(Math.random() * arr.length);
+        node.innerText = `"${arr[index]}"`;
+    }, 12000);
+}
+
+function escapeHtml(str) {
+    return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+}
+</script>
+</body>
+</html>

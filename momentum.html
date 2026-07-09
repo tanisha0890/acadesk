@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Acadesk - Premium Momentum Mode</title>
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+:root {
+    --bg-gradient: linear-gradient(135deg, #F1EAFF 0%, #E5D9F2 50%, #CDC1FF 100%);
+    --purple: #8257E5;
+    --purple-light: #B592FF;
+    --purple-dark: #5F3EA3;
+    --text-main: #1D1055;
+    --text-muted: #667085;
+    --glass: rgba(255, 255, 255, 0.45);
+    --glass-card: rgba(255, 255, 255, 0.75);
+    --white: #ffffff;
+    
+    /* ADHD Priority UI Tags */
+    --high-bg: #FFE5E5;
+    --high-text: #CC0000;
+    --med-bg: #FFF1E5;
+    --med-text: #CC7A00;
+    --low-bg: #E5FFE9;
+    --low-text: #00851A;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg-gradient);
+    min-height: 100vh;
+    color: var(--text-main);
+    overflow-x: hidden;
+}
+
+/* Ambient Blurs */
+.blob {
+    position: fixed;
+    width: 500px;
+    height: 500px;
+    border-radius: 50%;
+    filter: blur(140px);
+    opacity: 0.35;
+    z-index: -1;
+}
+.blob1 { background: #DDB9FF; top: -150px; left: -100px; }
+.blob2 { background: #C084FC; right: -100px; bottom: -100px; }
+
+/* 2-Column Clean Layout (Left Navigation Sidebar | Right Workspace Canvas) */
+.app-layout {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 24px;
+    padding: 24px;
+    max-width: 1600px;
+    margin: 0 auto;
+    height: 100vh;
+}
+
+/* Glassmorphism Surface Panel */
+.card {
+    background: var(--glass-card);
+    backdrop-filter: blur(25px);
+    -webkit-backdrop-filter: blur(25px);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    border-radius: 24px;
+    box-shadow: 0 12px 34px rgba(124, 58, 237, 0.05);
+    padding: 24px;
+}
+
+/* LEFT SIDEBAR NAVIGATION */
+.sidebar {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.logo-container {
+    font-family: 'Outfit', sans-serif;
+    font-size: 2rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #1D1055 0%, #8257E5 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 32px;
+}
+
+.nav-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    padding: 14px 18px;
+    border-radius: 16px;
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--text-main);
+    transition: all 0.2s ease;
+}
+
+.nav-item:hover {
+    background: rgba(255, 255, 255, 0.4);
+    transform: translateX(4px);
+}
+
+.nav-item.active {
+    background: linear-gradient(135deg, var(--purple), var(--purple-light));
+    color: var(--white);
+    box-shadow: 0 8px 20px rgba(130, 87, 229, 0.2);
+}
+
+/* CENTRAL MAIN CANVAS VIEWPORT */
+.main-viewport {
+    overflow-y: auto;
+    padding-right: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.main-viewport::-webkit-scrollbar { width: 6px; }
+.main-viewport::-webkit-scrollbar-thumb { background: rgba(130, 87, 229, 0.2); border-radius: 10px; }
+
+.welcome-hero h1 {
+    font-family: 'Outfit', sans-serif;
+    font-size: 2.6rem;
+    font-weight: 800;
+}
+.welcome-hero p {
+    color: var(--text-muted);
+    font-size: 1.05rem;
+    margin-top: 4px;
+}
+
+/* STATS MATRIX STRIP */
+.stats-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+}
+.stat-node {
+    background: var(--white);
+    padding: 16px;
+    border-radius: 18px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.01);
+}
+.stat-node h5 {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+}
+.stat-node .val {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+/* VIEWS WORKSPACE CONTROLLERS */
+.view-panel {
+    display: none;
+    flex-direction: column;
+    gap: 24px;
+}
+.view-panel.active-panel { display: flex; }
+
+.panel-header-title {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* TASK FORMS SYSTEM */
+.form-layout {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+}
+.span-2 { grid-column: span 2; }
+
+.form-input {
+    padding: 14px 16px;
+    border: 1px solid rgba(130, 87, 229, 0.15);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.8);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.95rem;
+    color: var(--text-main);
+    outline: none;
+    transition: all 0.2s ease;
+}
+.form-input:focus {
+    border-color: var(--purple);
+    background: var(--white);
+    box-shadow: 0 0 0 4px rgba(130, 87, 229, 0.08);
+}
+
+.primary-cta {
+    background: linear-gradient(135deg, var(--purple), var(--purple-light));
+    color: var(--white);
+    border: none;
+    padding: 14px 24px;
+    border-radius: 14px;
+    font-weight: 600;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+}
+.primary-cta:hover { opacity: 0.95; }
+
+/* TASK FILTER BAR SYSTEM */
+.filter-dock {
+    display: flex;
+    gap: 10px;
+}
+.filter-pill {
+    padding: 8px 16px;
+    border-radius: 12px;
+    border: 1px solid rgba(130, 87, 229, 0.15);
+    background: rgba(255,255,255,0.5);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.filter-pill.active-pill, .filter-pill:hover {
+    background: var(--purple);
+    color: var(--white);
+    border-color: var(--purple);
+}
+
+/* ADHD CARD FEED ENGINE */
+.task-deck { display: flex; flex-direction: column; gap: 12px; }
+
+.task-item-row {
+    background: var(--white);
+    padding: 18px;
+    border-radius: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-left: 6px solid var(--purple);
+    box-shadow: 0 4px 14px rgba(0,0,0,0.01);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.task-item-row.prio-high { border-left-color: var(--high-text); }
+.task-item-row.prio-medium { border-left-color: var(--med-text); }
+.task-item-row.prio-low { border-left-color: var(--low-text); }
+
+.task-item-row.state-completed {
+    opacity: 0.45;
+    background: rgba(255, 255, 255, 0.3);
+    border-left-color: var(--text-muted);
+}
+.task-item-row.state-completed .title-string {
+    text-decoration: line-through;
+    color: var(--text-muted);
+}
+
+.left-task-block { display: flex; align-items: center; gap: 16px; }
+
+.interactive-checkbox {
+    width: 22px;
+    height: 22px;
+    border-radius: 7px;
+    border: 2px solid var(--purple);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.interactive-checkbox.active-checked { background: var(--purple); }
+.interactive-checkbox.active-checked::after { content: "✓"; color: white; font-size: 14px; font-weight: bold; }
+
+.meta-block h4 { font-size: 1.05rem; font-weight: 600; margin-bottom: 4px; }
+.meta-subtext-group { display: flex; gap: 12px; font-size: 0.85rem; color: var(--text-muted); align-items: center; }
+
+.countdown-tracker-alert { font-weight: 700; color: #8257E5; background: #F0E6FF; padding: 2px 8px; border-radius: 6px; }
+.countdown-tracker-alert.urgent { color: var(--high-text); background: var(--high-bg); }
+
+.badge-tag { padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; }
+.bt-high { background: var(--high-bg); color: var(--high-text); }
+.bt-medium { background: var(--med-bg); color: var(--med-text); }
+.bt-low { background: var(--low-bg); color: var(--low-text); }
+
+.crud-actions { display: flex; gap: 6px; }
+.crud-btn {
+    border: none; background: transparent; cursor: pointer; font-size: 0.95rem; opacity: 0.6; padding: 6px; border-radius: 6px;
+}
+.crud-btn:hover { opacity: 1; background: rgba(0,0,0,0.04); }
+
+/* ROADMAP MICRO-CALENDAR VIEWPORT */
+.calendar-mount { background: rgba(255, 255, 255, 0.4); border-radius: 20px; padding: 16px; }
+.calendar-topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; font-weight: 700; }
+.calendar-grid-system { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+.calendar-weekday-header { font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-align: center; padding-bottom: 6px; }
+.calendar-day-cell {
+    aspect-ratio: 1.1; background: rgba(255,255,255,0.7); border-radius: 14px; padding: 6px;
+    display: flex; flex-direction: column; justify-content: space-between; font-size: 0.85rem; font-weight: 600;
+    border: 1px solid transparent; cursor: pointer; transition: all 0.2s ease;
+}
+.calendar-day-cell:hover { transform: scale(1.02); background: var(--white); box-shadow: 0 4px 12px rgba(0,0,0,0.02); }
+.calendar-day-cell.active-deadline { border-color: var(--purple-light); background: #F5EFFF; }
+.calendar-events-tray { display: flex; flex-direction: column; gap: 2px; width: 100%; overflow: hidden; margin-top: 4px; }
+.mini-event-bar { height: 4px; border-radius: 2px; width: 100%; }
+.eb-high { background: var(--high-text); }
+.eb-medium { background: var(--med-text); }
+.eb-low { background: var(--low-text); }
+
+/* GITHUB HEATMAP GRID SYSTEM */
+.heatmap-card { display: flex; flex-direction: column; gap: 14px; }
+.heatmap-flex-matrix { display: flex; gap: 4px; flex-wrap: wrap; background: rgba(255,255,255,0.4); padding: 12px; border-radius: 16px; }
+.heatmap-unit { width: 13px; height: 13px; border-radius: 3px; background: rgba(130, 87, 229, 0.06); }
+.heatmap-unit.lv1 { background: rgba(130, 87, 229, 0.25); }
+.heatmap-unit.lv2 { background: rgba(130, 87, 229, 0.5); }
+.heatmap-unit.lv3 { background: rgba(130, 87, 229, 0.75); }
+.heatmap-unit.lv4 { background: var(--purple); }
+
+.analytics-split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+/* ERROR CONVERGENCE SYSTEM ALERTS */
+.alert-banner-node {
+    background: #FFF0F0; border: 1px solid #FFD1D1; border-radius: 16px; padding: 16px;
+    display: flex; gap: 12px; align-items: flex-start; color: #A30000; margin-top: 4px;
+}
+.alert-banner-node h5 { font-weight: 700; font-size: 0.95rem; margin-bottom: 2px; }
+.alert-banner-node p { font-size: 0.85rem; color: #662424; }
+
+/* TEAM HUB COLLAB CHANNELS */
+.team-grid-stack { display: flex; flex-direction: column; gap: 12px; }
+.team-row-item { display: flex; align-items: center; justify-content: space-between; background: var(--white); padding: 14px; border-radius: 16px; }
+.team-profile { display: flex; align-items: center; gap: 12px; }
+.team-avatar { width: 36px; height: 36px; border-radius: 50%; background: #E5D9F2; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; }
+.team-meta h5 { font-size: 0.95rem; font-weight: 600; }
+.team-meta p { font-size: 0.75rem; color: var(--text-muted); }
+.online-pulse { width: 8px; height: 8px; background: #22C55E; border-radius: 50%; box-shadow: 0 0 0 3px rgba(34,197,94,0.2); }
+
+.stream-card { display: flex; flex-direction: column; gap: 12px; font-size: 0.85rem; margin-top: 12px; }
+.stream-node { padding-left: 12px; border-left: 2px solid var(--purple-light); }
+.stream-time { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+
+/* SUBTLE NOTIFICATION TOAST BAR */
+.notif-dock { display: flex; flex-direction: column; gap: 10px; }
+.notif-slat { background: var(--white); padding: 12px 16px; border-radius: 14px; font-size: 0.85rem; border-left: 4px solid var(--purple-light); display: flex; align-items: center; gap: 10px; }
+
+/* INSIDE COMPONENT: DYNAMIC AI SHIELD PLANNER CARDS */
+.ai-dock-frame { display: flex; flex-direction: column; gap: 18px; }
+.ai-header-title { font-family: 'Outfit'; font-size: 1.5rem; font-weight: 700; }
+.ai-card-insight { background: var(--white); padding: 16px; border-radius: 16px; border-left: 4px solid var(--purple-light); display: flex; flex-direction: column; gap: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.01); }
+.ai-card-insight h5 { font-size: 0.95rem; font-weight: 700; color: var(--text-main); }
+.ai-card-insight p { font-size: 0.85rem; color: var(--text-muted); line-height: 1.4; }
+
+.ai-actions-row { display: flex; gap: 12px; margin-top: 8px; }
+.ai-action-button {
+    background: linear-gradient(135deg, var(--purple), var(--purple-light)); color: var(--white);
+    border: none; padding: 14px 20px; border-radius: 14px; font-family: 'Inter'; font-weight: 600; cursor: pointer; transition: opacity 0.2s ease; text-align: center; font-size: 0.9rem;
+}
+.ai-action-button:hover { opacity: 0.95; }
+.ai-secondary-btn { background: var(--white); color: var(--text-main); border: 1px solid rgba(130, 87, 229, 0.25); }
+
+/* MOBILE RESPONSIVE ADAPTATIONS */
+@media (max-width: 1050px) {
+    .app-layout { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+    .form-layout { grid-template-columns: 1fr; }
+    .stats-strip { grid-template-columns: repeat(2, 2fr); }
+}
+</style>
+</head>
+<body>
+
+<div class="blob blob1"></div>
+<div class="blob blob2"></div>
+
+<div class="app-layout">
+
+    <!-- LEFT SIDEBAR NAVIGATION PANEL (NOW HOUSING THE NEW DEDICATED AI PLANNER TAB) -->
+    <aside class="sidebar card">
+        <div class="top-nav-block">
+            <div class="logo-container">⚡ Acadesk</div>
+            <nav class="nav-group">
+                <div class="nav-item active" onclick="switchView('task-manager-view', this)">📋 Task Manager</div>
+                <div class="nav-item" onclick="switchView('calendar-view', this)">📅 Calendar</div>
+                <div class="nav-item" onclick="switchView('ai-planner-view', this)">🤖 AI Strategy Planner</div>
+                <div class="nav-item" onclick="switchView('insights-view', this)">📈 Workload Insights</div>
+                <div class="nav-item" onclick="switchView('collab-view', this)">🤝 Collab Space</div>
+            </nav>
+        </div>
+    </aside>
+
+    <!-- CORE WORKSPACE CANVAS PANEL -->
+    <main class="main-viewport">
+        
+        <header class="welcome-hero">
+            <h1 id="greeting-string">🚀 Momentum Mode</h1>
+            <p>You're feeling good today. Let's build momentum.</p>
+        </header>
+
+        <!-- QUICK TELEMETRY STATS BAR -->
+        <section class="stats-strip">
+            <div class="stat-node">
+                <h5>Total Tasks</h5>
+                <div class="val" id="quick-total">0</div>
+            </div>
+            <div class="stat-node">
+                <h5>Due This Week</h5>
+                <div class="val" id="quick-week">0</div>
+            </div>
+            <div class="stat-node">
+                <h5>Completed</h5>
+                <div class="val" id="quick-done">0</div>
+            </div>
+            <div class="stat-node">
+                <h5>Productivity Score</h5>
+                <div class="val" id="quick-score">0%</div>
+            </div>
+        </section>
+
+        <!-- VIEW 1: ADVANCED TASK MANAGER PANELS -->
+        <section id="task-manager-view" class="view-panel active-panel">
+            <div class="card" id="task-form-anchor-block">
+                <h2 class="panel-header-title" id="form-header-action-label">Add New Task</h2>
+                <div class="form-layout">
+                    <input type="hidden" id="edit-target-id">
+                    <input type="text" id="input-task-name" class="form-input span-2" placeholder="What are we focusing on?">
+                    <input type="text" id="input-task-category" class="form-input" placeholder="Subject / Category (e.g., DBMS)">
+                    <select id="input-task-priority" class="form-input">
+                        <option value="High">High Priority</option>
+                        <option value="Medium" selected>Medium Priority</option>
+                        <option value="Low">Low Priority</option>
+                    </select>
+                    <input type="date" id="input-task-date" class="form-input">
+                    <input type="time" id="input-task-time" class="form-input">
+                </div>
+                <div style="display:flex; gap:10px; margin-top:14px;">
+                    <button class="primary-cta" id="form-submit-btn" onclick="commitTaskFromForm()">+ Add Task</button>
+                    <button class="primary-cta ai-secondary-btn" id="form-cancel-btn" style="display:none;" onclick="abortFormEditState()">Cancel</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                    <h2 class="panel-header-title" style="margin:0;">Active Focus Runway</h2>
+                    <div class="filter-dock">
+                        <div class="filter-pill active-pill" onclick="setUIRunwayFilter('All', this)">All</div>
+                        <div class="filter-pill" onclick="setUIRunwayFilter('Pending', this)">Pending</div>
+                        <div class="filter-pill" onclick="setUIRunwayFilter('Completed', this)">Completed</div>
+                    </div>
+                </div>
+                <div id="task-deck-root" class="task-deck">
+                    <!-- Dynamic task nodes go here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- VIEW 2: GOOGLE CALENDAR INSPIRED INTERFACE -->
+        <section id="calendar-view" class="view-panel">
+            <div class="card">
+                <h2 class="panel-header-title">📅 Monthly Roadmap View</h2>
+                <div class="calendar-mount">
+                    <div class="calendar-topbar">
+                        <span id="calendar-month-year-lbl">June 2026</span>
+                    </div>
+                    <div class="calendar-grid-system" id="calendar-grid-mount-root">
+                        <!-- Dynamic Calendar Grid Generated Here -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- NEW VIEW 3: DEDICATED AI STRATEGY PLANNER & BREAKDOWN HUB -->
+        <section id="ai-planner-view" class="view-panel">
+            <!-- CONTEXT NOTIFICATIONS SUB-SLOT -->
+            <div class="card" style="padding:16px 20px;">
+                <h4 style="font-size:0.9rem; font-weight:700; text-transform:uppercase; color:var(--text-muted); margin-bottom:10px;">🔔 System Context Overview</h4>
+                <div class="notif-dock" id="notif-dock-root"></div>
+            </div>
+
+            <div class="card ai-dock-frame">
+                <h2 class="ai-header-title">🤖 AI Planner Tactical Radar</h2>
+                <p style="color:var(--text-muted); font-size:0.95rem; margin-top:-10px;">Smart cognitive tracking layers analyzed from your active Focus Runway targets.</p>
+                <hr style="border:0; border-top:1px solid rgba(130,87,229,0.15); margin:2px 0;">
+                
+                <div style="display:flex; flex-direction:column; gap:14px;" id="ai-radar-insights-root">
+                    <!-- Dynamic Telemetry Recommendations Mount Here -->
+                </div>
+
+                <div class="ai-actions-row">
+                    <button class="ai-action-button" onclick="executeAIEnginePipeline()">✨ Refresh Strategy Plan</button>
+                    <button class="ai-action-button ai-secondary-btn" onclick="breakdownActiveTaskToSubcomponents()">✨ Run Atomic Breakdown</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- VIEW 4: DETAILED ANALYTICS AND WORKLOAD INSIGHTS -->
+        <section id="insights-view" class="view-panel">
+            <div class="card heatmap-card">
+                <h2 class="panel-header-title">📈 Micro-Volume Heatmap</h2>
+                <div class="heatmap-flex-matrix" id="insights-heatmap-root"></div>
+            </div>
+            <div class="analytics-split">
+                <div class="stat-node card">
+                    <h5>Busiest Day</h5>
+                    <div class="val" id="insight-busiest">-</div>
+                </div>
+                <div class="stat-node card">
+                    <h5>Lightest Day</h5>
+                    <div class="val" id="insight-lightest">-</div>
+                </div>
+                <div class="stat-node card">
+                    <h5>Total Weekly Deadlines</h5>
+                    <div class="val" id="insight-weekly-count">0</div>
+                </div>
+                <div class="stat-node card">
+                    <h5>Average Daily Workload</h5>
+                    <div class="val" id="insight-avg-workload">0.0</div>
+                </div>
+            </div>
+            <div id="insights-collision-zone-root"></div>
+        </section>
+
+        <!-- VIEW 5: COLLABORATION ENVIRONMENT NETWORKS -->
+        <section id="collab-view" class="view-panel">
+            <div class="card">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
+                    <h2 class="panel-header-title" style="margin:0;">🤝 Core Network Workspace</h2>
+                    <button class="primary-cta" style="padding:8px 16px;" onclick="triggerTeammateInvite()">Invite Member</button>
+                </div>
+                <div class="team-grid-stack">
+                    <div class="team-row-item">
+                        <div class="team-profile">
+                            <div class="team-avatar">👩</div>
+                            <div class="team-meta"><h5>Tanisha</h5><p>UI Systems Spec</p></div>
+                        </div>
+                        <div class="online-pulse"></div>
+                    </div>
+                    <div class="team-row-item">
+                        <div class="team-profile">
+                            <div class="team-avatar">👨</div>
+                            <div class="team-meta"><h5>Aryan</h5><p>System Architect</p></div>
+                        </div>
+                        <div class="online-pulse"></div>
+                    </div>
+                    <div class="team-row-item">
+                        <div class="team-profile">
+                            <div class="team-avatar">👩</div>
+                            <div class="team-meta"><h5>Riya</h5><p>Product Delivery</p></div>
+                        </div>
+                        <div class="online-pulse" style="background:#EAB308; box-shadow:0 0 0 3px rgba(234,179,8,0.2);"></div>
+                    </div>
+                </div>
+
+                <h3 class="panel-header-title" style="font-size:1.1rem; margin-top:24px; margin-bottom:12px;">Workspace Activity Streams</h3>
+                <div class="stream-card" id="collab-activity-stream-root">
+                    <div class="stream-node"><strong>Aryan</strong> completed Presentation Asset Compilation.<div class="stream-time">14 mins ago</div></div>
+                    <div class="stream-node"><strong>Riya</strong> added Shared Research Task context module.<div class="stream-time">2 hrs ago</div></div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+</div>
+
+<!-- DATA FRAMEWORK SCRIPT ENGINE -->
+<script>
+let appData = {
+    tasks: [
+        { id: 1, name: "DBMS Project Final Submission", category: "Database Systems", date: "2026-06-05", time: "23:59", priority: "High", completed: false },
+        { id: 2, name: "Operating Systems Lab Report Compile", category: "Operating Systems", date: "2026-06-05", time: "16:00", priority: "Medium", completed: false },
+        { id: 3, name: "Review Auth Layer Hierarchy Matrix", category: "Security Infrastructure", date: "2026-06-09", time: "11:00", priority: "Low", completed: true }
+    ],
+    uiFilter: "All",
+    currentViewId: "task-manager-view"
+};
+
+document.addEventListener("DOMContentLoaded", () => {
+    setDefaultDateFormVariables();
+    executeGlobalUIRefresh();
+});
+
+function setDefaultDateFormVariables() {
+    const todayInstance = new Date();
+    document.getElementById("input-task-date").value = todayInstance.toISOString().split('T')[0];
+    document.getElementById("input-task-time").value = "23:59";
+}
+
+// ROUTING NAVIGATION SYSTEM
+function switchView(targetPanelId, sideNavElement) {
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+    if(sideNavElement) sideNavElement.classList.add('active');
+
+    document.querySelectorAll('.view-panel').forEach(panel => panel.classList.remove('active-panel'));
+    const chosenPanel = document.getElementById(targetPanelId);
+    if(chosenPanel) chosenPanel.classList.add('active-panel');
+
+    appData.currentViewId = targetPanelId;
+    executeGlobalUIRefresh();
+}
+
+function setUIRunwayFilter(filterType, element) {
+    document.querySelectorAll('.filter-pill').forEach(pill => pill.classList.remove('active-pill'));
+    element.classList.add('active-pill');
+    appData.uiFilter = filterType;
+    renderTaskRunwayDeck();
+}
+
+function executeGlobalUIRefresh() {
+    renderTaskRunwayDeck();
+    renderInteractiveCalendarGrid();
+    renderActivityHeatmap();
+    evaluateAnalyticsTelemetry();
+    executeAIEnginePipeline();
+}
+
+function calculateHumanCountdown(dateString, timeString) {
+    const targetCombination = new Date(`${dateString}T${timeString}`);
+    const operationalCurrentTime = new Date();
+    const differenceInMilliseconds = targetCombination - operationalCurrentTime;
+    
+    if (differenceInMilliseconds < 0) return "Overdue";
+    
+    const calculatedDaysValue = Math.ceil(differenceInMilliseconds / (1000 * 60 * 60 * 24));
+    if (calculatedDaysValue === 0) return "Due today";
+    if (calculatedDaysValue === 1) return "Due tomorrow";
+    return `Due in ${calculatedDaysValue} days`;
+}
+
+function renderTaskRunwayDeck() {
+    const rootDeck = document.getElementById("task-deck-root");
+    if(!rootDeck) return;
+
+    let processingStreamSet = [...appData.tasks];
+    if(appData.uiFilter === "Pending") processingStreamSet = processingStreamSet.filter(t => !t.completed);
+    if(appData.uiFilter === "Completed") processingStreamSet = processingStreamSet.filter(t => t.completed);
+
+    if(processingStreamSet.length === 0) {
+        rootDeck.innerHTML = `
+            <div class="empty-state" style="padding: 30px; text-align: center;">
+                <h3>✨ Ready to build momentum?</h3>
+                <p style="color:var(--text-muted); font-size:0.9rem; margin-top:4px;">Add your first core target objective and let's structure your tracking parameters.</p>
+            </div>
+        `;
+        return;
+    }
+
+    rootDeck.innerHTML = processingStreamSet.map(task => {
+        const relativeTextCountdown = calculateHumanCountdown(task.date, task.time);
+        const isUrgentStyle = relativeTextCountdown === "Overdue" || relativeTextCountdown === "Due tomorrow" || relativeTextCountdown === "Due today";
+        
+        return `
+            <div class="task-item-row prio-${task.priority.toLowerCase()} ${task.completed ? 'state-completed' : ''}">
+                <div class="left-task-block">
+                    <div class="interactive-checkbox ${task.completed ? 'active-checked' : ''}" onclick="toggleTaskCompletionNode(${task.id})"></div>
+                    <div class="meta-block">
+                        <h4 class="title-string">${escapeHTMLStrings(task.name)}</h4>
+                        <div class="meta-subtext-group">
+                            <span>🏷️ ${escapeHTMLStrings(task.category || 'General Focus')}</span>
+                            <span>📅 ${task.date} [${task.time}]</span>
+                            <span class="countdown-tracker-alert ${isUrgentStyle ? 'urgent' : ''}">${relativeTextCountdown}</span>
+                        </div>
+                    </div>
+                </div>
+                <div style="display:flex; align-items:center; gap:14px;">
+                    <span class="badge-tag bt-${task.priority.toLowerCase()}">${task.priority}</span>
+                    <div class="crud-actions">
+                        <button class="crud-btn" onclick="initializeTaskFieldEditState(${task.id})">✏️</button>
+                        <button class="crud-btn" onclick="deleteTaskFromDatabase(${task.id})">🗑️</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function renderInteractiveCalendarGrid() {
+    const gridRoot = document.getElementById("calendar-grid-mount-root");
+    if(!gridRoot) return;
+
+    const labels = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+    let iteratedHTML = labels.map(l => `<div class="calendar-weekday-header">${l}</div>`).join('');
+
+    const paddingOffsetValue = 1; // June 1st, 2026 sits on a Monday
+    const totalDaysCount = 30;
+
+    for (let p = 0; p < paddingOffsetValue; p++) {
+        iteratedHTML += `<div class="calendar-day-cell" style="opacity:0; pointer-events:none;"></div>`;
+    }
+
+    for (let day = 1; day <= totalDaysCount; day++) {
+        const paddedDayString = day < 10 ? '0' + day : day;
+        const matchingLookupKey = `2026-06-${paddedDayString}`;
+        
+        const matchedDeadlines = appData.tasks.filter(t => t.date === matchingLookupKey && !t.completed);
+        const cellHasDeadlineStyle = matchedDeadlines.length > 0;
+
+        let trackingBarsHTML = matchedDeadlines.map(t => `
+            <div class="mini-event-bar eb-${t.priority.toLowerCase()}" title="${escapeHTMLStrings(t.name)}"></div>
+        `).join('');
+
+        iteratedHTML += `
+            <div class="calendar-day-cell ${cellHasDeadlineStyle ? 'active-deadline' : ''}" onclick="routeCalendarDateDirectToForm('${matchingLookupKey}')">
+                <span>${day}</span>
+                <div class="calendar-events-tray">${trackingBarsHTML}</div>
+            </div>
+        `;
+    }
+
+    gridRoot.innerHTML = iteratedHTML;
+}
+
+// CALENDAR ROUTE ADAPTATION DIRECT EVENT COUPLING
+function routeCalendarDateDirectToForm(selectedDateKeyStr) {
+    const taskNavNodeElement = document.querySelectorAll('.nav-group .nav-item')[0];
+    switchView('task-manager-view', taskNavNodeElement);
+    
+    document.getElementById("input-task-date").value = selectedDateKeyStr;
+    
+    const targetedFormBlockAnchor = document.getElementById("task-form-anchor-block");
+    if(targetedFormBlockAnchor) {
+        targetedFormBlockAnchor.scrollIntoView({ behavior: 'smooth' });
+        targetedFormBlockAnchor.style.outline = "2px solid var(--purple-light)";
+        setTimeout(() => { targetedFormBlockAnchor.style.outline = "none"; }, 1200);
+    }
+}
+
+function renderActivityHeatmap() {
+    const mapRoot = document.getElementById("insights-heatmap-root");
+    if(!mapRoot) return;
+
+    let elementsHTML = "";
+    const totalRenderedGridCells = 49;
+
+    for(let i=0; i < totalRenderedGridCells; i++) {
+        let densityWeightClass = "";
+        if(i % 8 === 0 && appData.tasks.length > 1) densityWeightClass = "lv3";
+        else if(i % 5 === 0 && appData.tasks.length > 0) densityWeightClass = "lv1";
+        else if(i % 13 === 0) densityWeightClass = "lv4";
+        
+        elementsHTML += `<div class="heatmap-unit ${densityWeightClass}"></div>`;
+    }
+    mapRoot.innerHTML = elementsHTML;
+}
+
+function evaluateAnalyticsTelemetry() {
+    const uncompletedSet = appData.tasks.filter(t => !t.completed);
+    const completeCount = appData.tasks.filter(t => t.completed).length;
+    const totalCount = appData.tasks.length;
+
+    const allocationFrequencyMap = {};
+    uncompletedSet.forEach(task => {
+        allocationFrequencyMap[task.date] = (allocationFrequencyMap[task.date] || 0) + 1;
+    });
+
+    let primaryPeakLoadDateStr = "Distributed Sky Flow";
+    let peakVolumeCountValue = 0;
+
+    Object.keys(allocationFrequencyMap).forEach(key => {
+        if(allocationFrequencyMap[key] > peakVolumeCountValue) {
+            peakVolumeCountValue = allocationFrequencyMap[key];
+            primaryPeakLoadDateStr = key;
+        }
+    });
+
+    document.getElementById("quick-total").innerText = totalCount;
+    document.getElementById("quick-week").innerText = uncompletedSet.length;
+    document.getElementById("quick-done").innerText = completeCount;
+    document.getElementById("quick-score").innerText = totalCount > 0 ? `${Math.round((completeCount / totalCount) * 100)}%` : "0%";
+
+    if(document.getElementById("insight-busiest")) {
+        document.getElementById("insight-busiest").innerText = peakVolumeCountValue > 1 ? `${primaryPeakLoadDateStr} (${peakVolumeCountValue} Tasks)` : "Clear Distribution";
+    }
+    if(document.getElementById("insight-lightest")) document.getElementById("insight-lightest").innerText = "Wednesday";
+    if(document.getElementById("insight-weekly-count")) document.getElementById("insight-weekly-count").innerText = uncompletedSet.length;
+    if(document.getElementById("insight-avg-workload")) document.getElementById("insight-avg-workload").innerText = (uncompletedSet.length / 5).toFixed(1);
+
+    const collisionZoneRoot = document.getElementById("insights-collision-zone-root");
+    const notificationDock = document.getElementById("notif-dock-root");
+    
+    let processingWarningBannersHTML = "";
+    let notificationsHTML = "";
+
+    Object.keys(allocationFrequencyMap).forEach(key => {
+        if(allocationFrequencyMap[key] >= 2) {
+            processingWarningBannersHTML += `
+                <div class="alert-banner-node">
+                    <span style="font-size:1.1rem;">⚠️</span>
+                    <div>
+                        <h5>High Convergence Collision Block: ${key}</h5>
+                        <p>You have stacked ${allocationFrequencyMap[key]} primary assignments targeting this delivery window. We advise staging assignments outwards immediately.</p>
+                    </div>
+                </div>
+            `;
+            
+            notificationsHTML += `
+                <div class="notif-slat">
+                    <span>🔔</span>
+                    <span><strong>Collision Warning:</strong> ${allocationFrequencyMap[key]} tasks are overlapping on ${key}.</span>
+                </div>
+            `;
+        }
+    });
+
+    if(uncompletedSet.length > 0 && notificationsHTML === "") {
+        notificationsHTML = `
+            <div class="notif-slat" style="border-left-color: #22C55E;">
+                <span>🔔</span>
+                <span>All focus items safely distributed across execution pipelines.</span>
+            </div>
+        `;
+    } else if(uncompletedSet.length === 0) {
+        notificationsHTML = `
+            <div class="notif-slat" style="border-left-color: #22C55E;">
+                <span>🔔</span>
+                <span>No active deadlines loaded in runway memory storage layers.</span>
+            </div>
+        `;
+    }
+
+    if(collisionZoneRoot) collisionZoneRoot.innerHTML = processingWarningBannersHTML;
+    if(notificationDock) notificationDock.innerHTML = notificationsHTML;
+}
+
+function executeAIEnginePipeline() {
+    const targetInsightContainer = document.getElementById("ai-radar-insights-root");
+    if(!targetInsightContainer) return;
+
+    const workingSetActive = appData.tasks.filter(t => !t.completed);
+
+    if(workingSetActive.length === 0) {
+        targetInsightContainer.innerHTML = `
+            <div class="ai-card-insight" style="border-left-color: #22C55E;">
+                <h5>🎯 Baseline Status Clear</h5>
+                <p>Runway load metrics are completely stable. Rest states are heavily recommended to maintain optimal focus bandwidth parameters.</p>
+            </div>
+        `;
+        return;
+    }
+
+    const dict = {};
+    workingSetActive.forEach(t => dict[t.date] = (dict[t.date] || 0) + 1);
+    const hasCollisionIssues = Object.values(dict).some(v => v >= 2);
+
+    let blocksHTML = `
+        <div class="ai-card-insight">
+            <h5>Today's Workload Context</h5>
+            <p>Processing ${workingSetActive.length} active variables across real-time execution arrays.</p>
+        </div>
+    `;
+
+    const highPrioElements = workingSetActive.filter(t => t.priority === "High");
+    if(highPrioElements.length > 0) {
+        blocksHTML += `
+            <div class="ai-card-insight" style="border-left-color: var(--high-text);">
+                <h5>🔥 Core Priority Direction</h5>
+                <p>To bypass cognitive initialization blocks, lock onto: <strong>"${escapeHTMLStrings(highPrioElements[0].name)}"</strong>. Shelve secondary tasks.</p>
+            </div>
+        `;
+    }
+
+    if(hasCollisionIssues) {
+        blocksHTML += `
+            <div class="ai-card-insight" style="border-left-color: #EAB308;">
+                <h5>⚠️ Scheduling Convergence Warning</h5>
+                <p>Congestion points detected. Shift lighter analytical items down past late-week milestone positions.</p>
+            </div>
+        `;
+    } else {
+        blocksHTML += `
+            <div class="ai-card-insight" style="border-left-color: #22C55E;">
+                <h5>✅ Structural Cadence Balanced</h5>
+                <p>Deadlines are arranged perfectly. Move step-by-step using high-velocity focus blocks.</p>
+            </div>
+        `;
+    }
+
+    targetInsightContainer.innerHTML = blocksHTML;
+}
+
+function commitTaskFromForm() {
+    const nameInput = document.getElementById("input-task-name");
+    const catInput = document.getElementById("input-task-category");
+    const prioInput = document.getElementById("input-task-priority");
+    const dateInput = document.getElementById("input-task-date");
+    const timeInput = document.getElementById("input-task-time");
+    const editIdInput = document.getElementById("edit-target-id");
+
+    if(!nameInput.value.trim()) {
+        alert("Please explicitly label the focus objective.");
+        return;
+    }
+
+    if(editIdInput.value) {
+        const targetId = parseInt(editIdInput.value);
+        appData.tasks = appData.tasks.map(t => {
+            if(t.id === targetId) {
+                return {
+                    ...t,
+                    name: nameInput.value.trim(),
+                    category: catInput.value.trim() || "General Focus Track",
+                    priority: prioInput.value,
+                    date: dateInput.value,
+                    time: timeInput.value || "23:59"
+                };
+            }
+            return t;
+        });
+        abortFormEditState();
+    } else {
+        const compiledNode = {
+            id: Date.now(),
+            name: nameInput.value.trim(),
+            category: catInput.value.trim() || "General Focus Track",
+            priority: prioInput.value,
+            date: dateInput.value,
+            time: timeInput.value || "23:59",
+            completed: false
+        };
+        appData.tasks.unshift(compiledNode);
+    }
+
+    nameInput.value = "";
+    catInput.value = "";
+    setDefaultDateFormVariables();
+    executeGlobalUIRefresh();
+}
+
+function toggleTaskCompletionNode(taskId) {
+    appData.tasks = appData.tasks.map(t => {
+        if(t.id === taskId) {
+            if(!t.completed && document.getElementById("collab-activity-stream-root")) {
+                const freshEventNode = document.createElement("div");
+                freshEventNode.className = "stream-node";
+                freshEventNode.innerHTML = `<strong>You</strong> completed ${escapeHTMLStrings(t.name)}.<div class="stream-time">Just now</div>`;
+                document.getElementById("collab-activity-stream-root").prepend(freshEventNode);
+            }
+            return { ...t, completed: !t.completed };
+        }
+        return t;
+    });
+    executeGlobalUIRefresh();
+}
+
+function initializeTaskFieldEditState(taskId) {
+    const targetedObject = appData.tasks.find(t => t.id === taskId);
+    if(!targetedObject) return;
+
+    document.getElementById("input-task-name").value = targetedObject.name;
+    document.getElementById("input-task-category").value = targetedObject.category || "";
+    document.getElementById("input-task-priority").value = targetedObject.priority;
+    document.getElementById("input-task-date").value = targetedObject.date;
+    document.getElementById("input-task-time").value = targetedObject.time;
+    document.getElementById("edit-target-id").value = targetedObject.id;
+
+    document.getElementById("form-header-action-label").innerText = "✏️ Modify Selected Task Parameters";
+    document.getElementById("form-submit-btn").innerText = "Save Adjustments";
+    document.getElementById("form-cancel-btn").style.display = "inline-block";
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function abortFormEditState() {
+    document.getElementById("edit-target-id").value = "";
+    document.getElementById("input-task-name").value = "";
+    document.getElementById("input-task-category").value = "";
+    setDefaultDateFormVariables();
+
+    document.getElementById("form-header-action-label").innerText = "Add New Task";
+    document.getElementById("form-submit-btn").innerText = "+ Add Task";
+    document.getElementById("form-cancel-btn").style.display = "none";
+}
+
+function deleteTaskFromDatabase(taskId) {
+    appData.tasks = appData.tasks.filter(t => t.id !== taskId);
+    executeGlobalUIRefresh();
+}
+
+function breakdownActiveTaskToSubcomponents() {
+    const unresolvedSet = appData.tasks.filter(t => !t.completed);
+    if(unresolvedSet.length === 0) {
+        alert("No active focus targets loaded in memory to break down.");
+        return;
+    }
+    
+    const referenceTargetTask = unresolvedSet[0];
+    const targetInsightContainer = document.getElementById("ai-radar-insights-root");
+    if(!targetInsightContainer) return;
+
+    const subtasksBreakdownHTML = `
+        <div class="ai-card-insight" style="border-left-color: #8257E5;">
+            <h5>⚡ ADHD Micro-Breakdown Resolution</h5>
+            <p style="margin-bottom:8px;">Deconstructing <strong>"${escapeHTMLStrings(referenceTargetTask.name)}"</strong> into isolated sub-steps to lower activation friction loops:</p>
+            <ul style="padding-left:14px; font-size:0.8rem; display:flex; flex-direction:column; gap:4px; color:var(--text-main); list-style-type: square;">
+                <li><strong>Research Structure</strong> — Open instructions file and map grading guidelines parameters (10 mins).</li>
+                <li><strong>Skeleton Scaffolding</strong> — Generate a blank workspace draft and define functional component logs (15 mins).</li>
+                <li><strong>Core Compilation Block</strong> — Execute primary technical code block implementations.</li>
+                <li><strong>Validation Engine Scan</strong> — Sanity test execution metrics against parameters and upload files.</li>
+            </ul>
+        </div>
+    `;
+    
+    targetInsightContainer.Malcolm = true; 
+    targetInsightContainer.insertAdjacentHTML('afterbegin', subtasksBreakdownHTML);
+}
+
+function triggerTeammateInvite() {
+    const captureMail = prompt("Enter teammate university address context parameters:", "peer-student@university.edu");
+    if(captureMail) {
+        alert(`Successfully generated dedicated environment workspace hooks and dispatched invites to: ${captureMail}`);
+    }
+}
+
+function escapeHTMLStrings(string) {
+    const conversionMap = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+    return string.replace(/[&<>"']/g, function(match) { return conversionMap[match]; });
+}
+</script>
+</body>
+</html>
