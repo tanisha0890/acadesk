@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Acadesk Dashboard</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+
+:root{
+    --bg-gradient: linear-gradient(
+        135deg,
+        #F1EAFF 0%,
+        #E5D9F2 50%,
+        #CDC1FF 100%
+    );
+
+    --purple:#8257E5;
+    --purple-light:#B592FF;
+    --text-main:#1D1055;
+    --text-muted:#667085;
+}
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+body{
+    min-height:100vh;
+    background:var(--bg-gradient);
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    font-family:'Inter',sans-serif;
+    overflow:hidden;
+    position:relative;
+}
+
+/* Background Blobs */
+
+.blob{
+    position:absolute;
+    border-radius:50%;
+    filter:blur(120px);
+    opacity:.35;
+}
+
+.blob1{
+    width:350px;
+    height:350px;
+    background:#DDB9FF;
+    top:-120px;
+    left:-120px;
+}
+
+.blob2{
+    width:350px;
+    height:350px;
+    background:#C084FC;
+    bottom:-120px;
+    right:-120px;
+}
+
+/* Main Card */
+
+.dashboard{
+    width:min(950px,90%);
+    background:rgba(255,255,255,.28);
+    backdrop-filter:blur(20px);
+    border-radius:40px;
+    border:1px solid rgba(255,255,255,.6);
+    box-shadow:0 20px 60px rgba(124,58,237,.12);
+    padding:60px;
+    text-align:center;
+}
+
+/* Greeting */
+
+.greeting{
+    font-family:'Outfit',sans-serif;
+    font-size:4rem;
+    font-weight:800;
+    color:var(--text-main);
+}
+
+.subtitle{
+    margin-top:12px;
+    color:var(--text-muted);
+    font-size:1.1rem;
+    margin-bottom:50px;
+}
+
+/* Focus Cards */
+
+.focus-container{
+    display:flex;
+    justify-content:center;
+    gap:18px;
+    flex-wrap:wrap;
+}
+
+.focus-btn{
+
+    width:120px;
+    height:145px;
+
+    border:none;
+    border-radius:28px;
+
+    background:white;
+
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+
+    cursor:pointer;
+
+    transition:.25s ease;
+
+    font-family:'Outfit',sans-serif;
+}
+
+.focus-btn:hover{
+    transform:translateY(-6px);
+}
+
+.focus-btn.selected{
+    background:linear-gradient(
+        135deg,
+        #8257E5,
+        #B592FF
+    );
+    color:white;
+}
+
+.emoji{
+    font-size:2rem;
+    margin-bottom:8px;
+}
+
+.number{
+    font-size:1.2rem;
+    font-weight:700;
+}
+
+.label{
+    margin-top:6px;
+    font-size:.8rem;
+    font-weight:500;
+}
+
+/* Popup */
+
+.popup{
+    position:fixed;
+    top:30px;
+    left:50%;
+    transform:translateX(-50%);
+
+    background:#F3E8FF;
+    color:#6D28D9;
+
+    padding:16px 26px;
+
+    border-radius:18px;
+
+    font-weight:600;
+
+    opacity:0;
+
+    transition:.3s ease;
+
+    pointer-events:none;
+
+    box-shadow:
+    0 10px 25px rgba(124,58,237,.15);
+
+    z-index:100;
+}
+
+.popup.show{
+    opacity:1;
+}
+
+/* Hidden */
+
+.hidden{
+    display:none;
+}
+
+/* Momentum Dashboard */
+
+.dashboard-title{
+    font-family:'Outfit',sans-serif;
+    font-size:2.4rem;
+    color:var(--text-main);
+    margin-bottom:10px;
+}
+
+.dashboard-subtitle{
+    color:var(--text-muted);
+    margin-bottom:35px;
+}
+
+.card{
+    background:white;
+    padding:22px;
+    border-radius:20px;
+    margin-bottom:15px;
+    text-align:left;
+    font-weight:600;
+    color:var(--text-main);
+}
+
+/* Mobile */
+
+@media(max-width:768px){
+
+    .dashboard{
+        padding:35px 20px;
+    }
+
+    .greeting{
+        font-size:2.7rem;
+    }
+
+    .focus-btn{
+        width:95px;
+        height:120px;
+    }
+
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="blob blob1"></div>
+<div class="blob blob2"></div>
+
+<div id="popup" class="popup"></div>
+
+<div class="dashboard">
+
+    <!-- FOCUS SCREEN -->
+
+    <div id="focusScreen">
+
+        <h1 class="greeting">
+            Hi there 👋
+        </h1>
+
+        <p class="subtitle">
+            How are you doing today?
+        </p>
+
+        <div class="focus-container">
+
+            <button class="focus-btn" data-level="1">
+                <span class="emoji">🚀</span>
+                <span class="number">1</span>
+                <span class="label">Ready</span>
+            </button>
+
+            <button class="focus-btn" data-level="2">
+                <span class="emoji">😊</span>
+                <span class="number">2</span>
+                <span class="label">Good</span>
+            </button>
+
+            <button class="focus-btn" data-level="3">
+                <span class="emoji">😌</span>
+                <span class="number">3</span>
+                <span class="label">Okay</span>
+            </button>
+
+            <button class="focus-btn" data-level="4">
+                <span class="emoji">😵</span>
+                <span class="number">4</span>
+                <span class="label">Distracted</span>
+            </button>
+
+            <button class="focus-btn" data-level="5">
+                <span class="emoji">🫠</span>
+                <span class="number">5</span>
+                <span class="label">Struggling</span>
+            </button>
+
+        </div>
+
+    </div>
+
+    <!-- MOMENTUM SCREEN -->
+
+    <div id="momentumScreen" class="hidden">
+
+        <h2 class="dashboard-title">
+            🚀 Let's Build Momentum
+        </h2>
+
+        <p class="dashboard-subtitle">
+            You're doing great. Let's focus on what matters most.
+        </p>
+
+        <div class="card">Priority 1</div>
+        <div class="card">Priority 2</div>
+        <div class="card">Priority 3</div>
+
+    </div>
+
+    <!-- SUPPORT SCREEN -->
+
+    <div id="supportScreen" class="hidden">
+
+        <h2 class="dashboard-title">
+            💜 Let's Keep Today Simple
+        </h2>
+
+        <p class="dashboard-subtitle">
+            No pressure. We'll take it one step at a time.
+        </p>
+
+        <div class="card">One thing I must do</div>
+        <div class="card">One thing that would help</div>
+        <div class="card">One thing that can wait</div>
+
+    </div>
+
+</div>
+
+<script>
+
+const buttons =
+document.querySelectorAll(".focus-btn");
+
+const popup =
+document.getElementById("popup");
+
+const focusScreen =
+document.getElementById("focusScreen");
+
+const momentumScreen =
+document.getElementById("momentumScreen");
+
+const supportScreen =
+document.getElementById("supportScreen");
+
+buttons.forEach(button => {
+
+    button.addEventListener("click", () => {
+
+        buttons.forEach(btn =>
+            btn.classList.remove("selected")
+        );
+
+        button.classList.add("selected");
+
+        const level =
+        Number(button.dataset.level);
+
+        if(level <= 2){
+    popup.innerHTML = "🌸 Nice! Let's build momentum today.";
+    popup.classList.add("show");
+    setTimeout(() => {
+        popup.classList.remove("show");
+        window.location.href = "momentum.html";
+    },1500);
+} else {
+    popup.innerHTML = "💜 Okay, let's make today easier.";
+    popup.classList.add("show");
+    setTimeout(() => {
+        popup.classList.remove("show");
+        window.location.href = "support.html";
+    },1500);
+}
+
+    });
+
+});
+
+</script>
+
+</body>
+</html>
